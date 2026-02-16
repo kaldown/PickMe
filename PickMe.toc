@@ -17,4 +17,5 @@ Libs\LibDBIcon-1.0\lib.xml
 Core.lua
 WhisperQueue.lua
 Scanner.lua
+MessageLog.lua
 UI.lua

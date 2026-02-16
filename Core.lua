@@ -166,25 +166,8 @@ local dataObject = LDB:NewDataObject("PickMe", {
 --------------------------------------------------------------
 
 SLASH_PICKME1 = "/pickme"
-SlashCmdList["PICKME"] = function(msg)
-    msg = (msg or ""):trim():lower()
-    if msg == "messages" or msg == "msg" or msg == "log" then
-        if PickMe.ToggleMessageFrame then PickMe:ToggleMessageFrame() end
-    elseif msg == "on" then
-        PickMe:Enable()
-    elseif msg == "off" then
-        PickMe:Disable()
-    elseif msg == "pause" then
-        PickMe:Pause()
-    elseif msg == "resume" then
-        PickMe:Resume()
-    elseif msg == "clear" then
-        PickMe:ClearHistory()
-    elseif msg == "status" then
-        PickMe:Status()
-    else
-        if PickMe.ToggleFrame then PickMe:ToggleFrame() end
-    end
+SlashCmdList["PICKME"] = function()
+    if PickMe.ToggleFrame then PickMe:ToggleFrame() end
 end
 
 --------------------------------------------------------------
