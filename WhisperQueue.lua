@@ -63,6 +63,25 @@ end
 
 local whisperQueue = {}
 local queueTicker = nil
+local HISTORY_CAP = 100
+
+local function IsInHistory(name)
+    if not PickMeDB or not PickMeDB.history then return false end
+    for _, entry in ipairs(PickMeDB.history) do
+        if entry.name == name then return true end
+    end
+    return false
+end
+
+local function AddToHistory(name, dungeon)
+    if not PickMeDB then return end
+    PickMeDB.history = PickMeDB.history or {}
+    table.insert(PickMeDB.history, { name = name, dungeon = dungeon, time = time() })
+    -- Trim oldest if over cap
+    while #PickMeDB.history > HISTORY_CAP do
+        table.remove(PickMeDB.history, 1)
+    end
+end
 
 function PickMe:GetQueueCount()
     return #whisperQueue
@@ -84,11 +103,11 @@ local function ProcessQueue()
     local target = table.remove(whisperQueue, 1)
 
     -- Final dedup check (might have been whispered while in queue)
-    if PickMeDB.whispered[target.name] then return end
+    if IsInHistory(target.name) then return end
 
     local msg = SubstituteTemplate(PickMeDB.profile.template, target)
     SendChatMessage(msg, "WHISPER", nil, target.name)
-    PickMeDB.whispered[target.name] = time()
+    AddToHistory(target.name, target.dungeon)
 
     PickMe:Print("Whispered " .. target.name .. " (" .. target.dungeon .. ")")
 
@@ -105,7 +124,7 @@ end
 
 function PickMe:Enqueue(name, dungeon)
     -- Dedup: already whispered or already in queue
-    if PickMeDB.whispered[name] then return false end
+    if IsInHistory(name) then return false end
     for _, entry in ipairs(whisperQueue) do
         if entry.name == name then return false end
     end
@@ -134,4 +153,37 @@ function PickMe:ClearQueue()
         queueTicker:Cancel()
         queueTicker = nil
     end
+end
+
+function PickMe:GetQueue()
+    return whisperQueue
+end
+
+function PickMe:RemoveFromQueue(index)
+    if index >= 1 and index <= #whisperQueue then
+        table.remove(whisperQueue, index)
+    end
+    -- Stop ticker if queue drained
+    if #whisperQueue == 0 and queueTicker then
+        queueTicker:Cancel()
+        queueTicker = nil
+    end
+end
+
+function PickMe:GetHistoryCount()
+    if not PickMeDB or not PickMeDB.history then return 0 end
+    return #PickMeDB.history
+end
+
+function PickMe:RemoveFromHistory(index)
+    if PickMeDB and PickMeDB.history and index >= 1 and index <= #PickMeDB.history then
+        table.remove(PickMeDB.history, index)
+    end
+end
+
+function PickMe:ClearHistory()
+    if PickMeDB then
+        PickMeDB.history = {}
+    end
+    self:Print("Whisper history cleared.")
 end
