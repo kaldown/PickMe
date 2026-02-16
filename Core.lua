@@ -152,24 +152,8 @@ local dataObject = LDB:NewDataObject("PickMe", {
 --------------------------------------------------------------
 
 SLASH_PICKME1 = "/pickme"
-SLASH_PICKME2 = "/pm"
-SlashCmdList["PICKME"] = function(input)
-    local cmd = (input or ""):trim():lower()
-    if cmd == "on" then
-        PickMe:Enable()
-    elseif cmd == "off" then
-        PickMe:Disable()
-    elseif cmd == "pause" then
-        PickMe:Pause()
-    elseif cmd == "resume" then
-        PickMe:Resume()
-    elseif cmd == "clear" then
-        PickMe:ClearHistory()
-    elseif cmd == "status" then
-        PickMe:Status()
-    else
-        if PickMe.ToggleFrame then PickMe:ToggleFrame() end
-    end
+SlashCmdList["PICKME"] = function()
+    if PickMe.ToggleFrame then PickMe:ToggleFrame() end
 end
 
 --------------------------------------------------------------
@@ -183,7 +167,7 @@ eventFrame:SetScript("OnEvent", function(self, event)
         InitializeDB()
         PickMe.paused = PickMeDB.profile.paused or false
         LDBIcon:Register("PickMe", dataObject, PickMeDB.minimap)
-        PickMe:Print("v" .. VERSION .. " loaded. /pickme to configure.")
+        PickMe:Print("v" .. VERSION .. " loaded. Use minimap button to configure.")
         if PickMe.RegisterScannerEvents then
             PickMe:RegisterScannerEvents()
         end

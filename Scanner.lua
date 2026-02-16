@@ -110,26 +110,3 @@ function PickMe:ManualScan()
     self:Print("Manual scan complete. " .. queued .. " in queue.")
 end
 
---------------------------------------------------------------
--- Debug slash commands
---------------------------------------------------------------
-
-SLASH_PICKMEDISCO1 = "/pickmedisco"
-SlashCmdList["PICKMEDISCO"] = function()
-    if not C_LFGList then
-        PickMe:Print("C_LFGList not available. Open LFG Browse panel first.")
-        return
-    end
-
-    local ok, totalResults, results = pcall(C_LFGList.GetSearchResults)
-    if ok then
-        PickMe:Print("Search results: " .. tostring(totalResults) .. " total, " .. tostring(results and #results or 0) .. " accessible")
-    else
-        PickMe:Print("GetSearchResults error: " .. tostring(totalResults))
-    end
-end
-
-SLASH_PICKMESCAN1 = "/pickmescan"
-SlashCmdList["PICKMESCAN"] = function()
-    PickMe:ManualScan()
-end
