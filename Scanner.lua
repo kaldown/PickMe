@@ -1,36 +1,6 @@
 local _, PickMe = ...
 
 --------------------------------------------------------------
--- LFG API references (resolved at load time)
---------------------------------------------------------------
-
-local GetNumLFGResults = GetNumLFGResults
-local GetLFGResults = GetLFGResults
-local GetLFGTypes = GetLFGTypes
-local GetLFGTypeEntries = GetLFGTypeEntries
-
---------------------------------------------------------------
--- Debug / API discovery
---------------------------------------------------------------
-
-local function DiscoverLFGAPI()
-    local apis = {
-        "GetNumLFGResults", "GetLFGResults", "GetLFGTypes", "GetLFGTypeEntries",
-        "SetLFGType", "ClearLookingForGroup", "SetLookingForGroup",
-        "GetLookingForGroup", "LFGBrowse_UpdateResults",
-    }
-    local found = {}
-    for _, name in ipairs(apis) do
-        if _G[name] then
-            found[#found + 1] = "|cFF00FF00" .. name .. "|r"
-        else
-            found[#found + 1] = "|cFFFF0000" .. name .. "|r"
-        end
-    end
-    PickMe:Print("LFG API: " .. table.concat(found, ", "))
-end
-
---------------------------------------------------------------
 -- Scanner state
 --------------------------------------------------------------
 
@@ -39,30 +9,68 @@ local isRegistered = false
 local playerName = nil
 
 --------------------------------------------------------------
--- Scan LFG results
+-- Activity ID to dungeon name resolution
+--------------------------------------------------------------
+
+local function GetDungeonName(activityIDs)
+    if not activityIDs or not C_LFGList then return "Unknown" end
+
+    -- Try GetActivityFullName first
+    if C_LFGList.GetActivityFullName then
+        for _, id in ipairs(activityIDs) do
+            local ok, name = pcall(C_LFGList.GetActivityFullName, id)
+            if ok and name and name ~= "" then
+                return name
+            end
+        end
+    end
+
+    -- Fallback: GetActivityInfoTable
+    if C_LFGList.GetActivityInfoTable then
+        for _, id in ipairs(activityIDs) do
+            local ok, info = pcall(C_LFGList.GetActivityInfoTable, id)
+            if ok and info and info.fullName and info.fullName ~= "" then
+                return info.fullName
+            elseif ok and info and info.shortName and info.shortName ~= "" then
+                return info.shortName
+            end
+        end
+    end
+
+    return "Unknown"
+end
+
+--------------------------------------------------------------
+-- Scan LFG Browse results
 --------------------------------------------------------------
 
 local function ScanLFGResults()
     if not PickMe:IsActive() then return end
-    if not GetNumLFGResults or not GetLFGResults then return end
-    if not GetLFGTypes then return end
+    if not C_LFGList or not C_LFGList.GetSearchResults then return end
+    if not C_LFGList.GetSearchResultInfo then return end
 
     local myName = playerName or UnitName("player")
     playerName = myName
 
-    local types = { GetLFGTypes() }
-    for typeIdx, typeName in ipairs(types) do
-        if typeName then
-            local entries = { GetLFGTypeEntries(typeIdx) }
-            for lfgIdx, entryName in ipairs(entries) do
-                local numResults = GetNumLFGResults(typeIdx, lfgIdx)
-                if numResults and numResults > 0 then
-                    for i = 1, numResults do
-                        local name, level, class, _, _, zone, _ = GetLFGResults(typeIdx, lfgIdx, i)
-                        if name and name ~= myName then
-                            PickMe:Enqueue(name, entryName or zone or "Unknown")
-                        end
-                    end
+    local ok, totalResults, results = pcall(C_LFGList.GetSearchResults)
+    if not ok or not results or #results == 0 then return end
+
+    local targetMode = PickMeDB.profile.targetMode
+
+    for _, resultID in ipairs(results) do
+        local ok2, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+        if ok2 and info and not info.isDelisted then
+            local leader = info.leaderName
+            if leader and leader ~= "" and leader ~= myName then
+                -- Target mode filter
+                local shouldWhisper = true
+                if targetMode == "groups" and info.numMembers and info.numMembers <= 1 then
+                    shouldWhisper = false
+                end
+
+                if shouldWhisper then
+                    local dungeon = GetDungeonName(info.activityIDs)
+                    PickMe:Enqueue(leader, dungeon)
                 end
             end
         end
@@ -72,13 +80,6 @@ end
 --------------------------------------------------------------
 -- Event handling
 --------------------------------------------------------------
-
-local LFG_EVENTS = {
-    "LFG_UPDATE",
-    "UPDATE_LFG",
-    "LFG_LIST_UPDATE",
-    "LFG_SEARCH_RESULTS",
-}
 
 local function OnEvent(self, event, ...)
     if not PickMe:IsActive() then return end
@@ -90,31 +91,45 @@ end
 --------------------------------------------------------------
 
 function PickMe:RegisterScannerEvents()
-    for _, event in ipairs(LFG_EVENTS) do
-        local ok = pcall(scannerFrame.RegisterEvent, scannerFrame, event)
-        if ok then
-            isRegistered = true
-        end
-    end
+    -- These events fire when LFG Browse results arrive/update
+    pcall(scannerFrame.RegisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    pcall(scannerFrame.RegisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULT_UPDATED")
     scannerFrame:SetScript("OnEvent", OnEvent)
+    isRegistered = true
 end
 
 function PickMe:UnregisterScannerEvents()
-    for _, event in ipairs(LFG_EVENTS) do
-        pcall(scannerFrame.UnregisterEvent, scannerFrame, event)
-    end
+    pcall(scannerFrame.UnregisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULTS_RECEIVED")
+    pcall(scannerFrame.UnregisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULT_UPDATED")
     isRegistered = false
 end
 
-function PickMe:RunAPIDisco()
-    DiscoverLFGAPI()
+function PickMe:ManualScan()
+    ScanLFGResults()
+    local queued = PickMe:GetQueueCount()
+    self:Print("Manual scan complete. " .. queued .. " in queue.")
 end
 
 --------------------------------------------------------------
--- Slash command for discovery (development aid)
+-- Debug slash commands
 --------------------------------------------------------------
 
 SLASH_PICKMEDISCO1 = "/pickmedisco"
 SlashCmdList["PICKMEDISCO"] = function()
-    PickMe:RunAPIDisco()
+    if not C_LFGList then
+        PickMe:Print("C_LFGList not available. Open LFG Browse panel first.")
+        return
+    end
+
+    local ok, totalResults, results = pcall(C_LFGList.GetSearchResults)
+    if ok then
+        PickMe:Print("Search results: " .. tostring(totalResults) .. " total, " .. tostring(results and #results or 0) .. " accessible")
+    else
+        PickMe:Print("GetSearchResults error: " .. tostring(totalResults))
+    end
+end
+
+SLASH_PICKMESCAN1 = "/pickmescan"
+SlashCmdList["PICKMESCAN"] = function()
+    PickMe:ManualScan()
 end

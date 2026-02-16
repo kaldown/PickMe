@@ -263,6 +263,11 @@ mainFrame:SetScript("OnShow", function()
     end
 end)
 
+mainFrame:SetScript("OnHide", function()
+    templateBox:ClearFocus()
+    delayBox:ClearFocus()
+end)
+
 -- Periodic stats refresh while visible
 mainFrame:SetScript("OnUpdate", function(self, elapsed)
     self.elapsed = (self.elapsed or 0) + elapsed

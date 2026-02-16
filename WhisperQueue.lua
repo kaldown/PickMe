@@ -22,10 +22,21 @@ function PickMe:GetTemplateVarList()
 end
 
 local function GetPlayerRole()
-    local role = GetTalentGroupRole and GetTalentGroupRole()
-    if role and role ~= "NONE" then
+    -- GetTalentGroupRole exists but throws "API unsupported" on Classic Anniversary
+    local ok, role = pcall(function()
+        if GetTalentGroupRole then return GetTalentGroupRole() end
+    end)
+    if ok and role and role ~= "NONE" then
         if role == "DAMAGER" then return "DPS" end
         return role:sub(1, 1) .. role:sub(2):lower() -- Tank, Healer
+    end
+    -- Fallback: check role from LFG if available
+    if GetLFGRoles then
+        local ok2, leader, tank, healer, dps = pcall(GetLFGRoles)
+        if ok2 then
+            if tank then return "Tank" end
+            if healer then return "Healer" end
+        end
     end
     return "DPS"
 end
