@@ -132,7 +132,11 @@ local dataObject = LDB:NewDataObject("PickMe", {
     icon = "Interface\\Icons\\INV_Letter_15",
     OnClick = function(_, button)
         if button == "LeftButton" then
-            if PickMe.ToggleFrame then PickMe:ToggleFrame() end
+            if IsShiftKeyDown() then
+                if PickMe.ToggleFrame then PickMe:ToggleFrame() end
+            else
+                if PickMe.ToggleMessageFrame then PickMe:ToggleMessageFrame() end
+            end
         elseif button == "RightButton" then
             if PickMeDB.profile.enabled then
                 PickMe:Disable()
@@ -147,11 +151,12 @@ local dataObject = LDB:NewDataObject("PickMe", {
         local db = PickMeDB.profile
         local status = db.enabled and (PickMe.paused and "|cFFFFFF00PAUSED|r" or "|cFF00FF00ON|r") or "|cFFFF0000OFF|r"
         tooltip:AddLine("Status: " .. status, 1, 1, 1)
-        local whispered = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
+        local historyCount = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
         local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
-        tooltip:AddLine("Whispered: " .. whispered .. " | Queued: " .. queued, 0.7, 0.7, 0.7)
+        tooltip:AddLine(queued .. " queued | " .. historyCount .. " whispered", 0.7, 0.7, 0.7)
         tooltip:AddLine(" ")
-        tooltip:AddLine("|cFFFFFFFFLeft-click:|r Toggle panel", 0.7, 0.7, 0.7)
+        tooltip:AddLine("|cFFFFFFFFLeft-click:|r Messages", 0.7, 0.7, 0.7)
+        tooltip:AddLine("|cFFFFFFFFShift-click:|r Settings", 0.7, 0.7, 0.7)
         tooltip:AddLine("|cFFFFFFFFRight-click:|r Toggle ON/OFF", 0.7, 0.7, 0.7)
     end,
 })
@@ -161,8 +166,25 @@ local dataObject = LDB:NewDataObject("PickMe", {
 --------------------------------------------------------------
 
 SLASH_PICKME1 = "/pickme"
-SlashCmdList["PICKME"] = function()
-    if PickMe.ToggleFrame then PickMe:ToggleFrame() end
+SlashCmdList["PICKME"] = function(msg)
+    msg = (msg or ""):trim():lower()
+    if msg == "messages" or msg == "msg" or msg == "log" then
+        if PickMe.ToggleMessageFrame then PickMe:ToggleMessageFrame() end
+    elseif msg == "on" then
+        PickMe:Enable()
+    elseif msg == "off" then
+        PickMe:Disable()
+    elseif msg == "pause" then
+        PickMe:Pause()
+    elseif msg == "resume" then
+        PickMe:Resume()
+    elseif msg == "clear" then
+        PickMe:ClearHistory()
+    elseif msg == "status" then
+        PickMe:Status()
+    else
+        if PickMe.ToggleFrame then PickMe:ToggleFrame() end
+    end
 end
 
 --------------------------------------------------------------
