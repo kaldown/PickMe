@@ -20,7 +20,7 @@ local DEFAULTS = {
         whisperDelay = 3,
         targetMode = "groups",
     },
-    whispered = {},
+    history = {},
     minimap = { hide = false },
 }
 
@@ -46,6 +46,22 @@ local function InitializeDB()
             end
         end
     end
+
+    -- Migrate old whispered table to history format
+    if PickMeDB.whispered then
+        PickMeDB.history = PickMeDB.history or {}
+        for name, ts in pairs(PickMeDB.whispered) do
+            -- Check if already migrated
+            local found = false
+            for _, entry in ipairs(PickMeDB.history) do
+                if entry.name == name then found = true; break end
+            end
+            if not found then
+                table.insert(PickMeDB.history, { name = name, dungeon = "Unknown", time = ts })
+            end
+        end
+        PickMeDB.whispered = nil
+    end
 end
 
 --------------------------------------------------------------
@@ -59,8 +75,7 @@ end
 function PickMe:Status()
     local db = PickMeDB.profile
     local status = db.enabled and (PickMe.paused and "|cFFFFFF00PAUSED|r" or "|cFF00FF00ON|r") or "|cFFFF0000OFF|r"
-    local whispered = 0
-    for _ in pairs(PickMeDB.whispered) do whispered = whispered + 1 end
+    local whispered = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
     local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
     self:Print("Status: " .. status)
     self:Print("Whispered: " .. whispered .. " | Queued: " .. queued)
@@ -104,11 +119,6 @@ function PickMe:Resume()
     self:Print("Scanning |cFF00FF00resumed|r")
 end
 
-function PickMe:ClearHistory()
-    PickMeDB.whispered = {}
-    self:Print("Whisper history cleared.")
-end
-
 function PickMe:IsActive()
     return PickMeDB.profile.enabled and not PickMe.paused
 end
@@ -137,8 +147,7 @@ local dataObject = LDB:NewDataObject("PickMe", {
         local db = PickMeDB.profile
         local status = db.enabled and (PickMe.paused and "|cFFFFFF00PAUSED|r" or "|cFF00FF00ON|r") or "|cFFFF0000OFF|r"
         tooltip:AddLine("Status: " .. status, 1, 1, 1)
-        local whispered = 0
-        for _ in pairs(PickMeDB.whispered) do whispered = whispered + 1 end
+        local whispered = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
         local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
         tooltip:AddLine("Whispered: " .. whispered .. " | Queued: " .. queued, 0.7, 0.7, 0.7)
         tooltip:AddLine(" ")
