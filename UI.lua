@@ -224,28 +224,23 @@ local statsValue = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight
 statsValue:SetPoint("LEFT", statsLabel, "RIGHT", 8, 0)
 
 local function UpdateStats()
-    local whispered = 0
-    if PickMeDB and PickMeDB.whispered then
-        for _ in pairs(PickMeDB.whispered) do whispered = whispered + 1 end
-    end
+    local whispered = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
     local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
     statsValue:SetText(whispered .. " whispered | " .. queued .. " queued")
 end
 
 --------------------------------------------------------------
--- Clear history button
+-- Messages button
 --------------------------------------------------------------
 
 yOffset = yOffset - 30
 
-local clearBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
-clearBtn:SetSize(110, 22)
-clearBtn:SetPoint("TOPLEFT", 16, yOffset)
-clearBtn:SetText("Clear History")
-clearBtn:SetScript("OnClick", function()
-    PickMe:ClearHistory()
-    UpdateStats()
-    PlaySound(808)
+local messagesBtn = CreateFrame("Button", nil, mainFrame, "UIPanelButtonTemplate")
+messagesBtn:SetSize(110, 22)
+messagesBtn:SetPoint("TOPLEFT", 16, yOffset)
+messagesBtn:SetText("Messages")
+messagesBtn:SetScript("OnClick", function()
+    if PickMe.ToggleMessageFrame then PickMe:ToggleMessageFrame() end
 end)
 
 --------------------------------------------------------------
