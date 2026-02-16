@@ -1,0 +1,18 @@
+## Interface: 11508, 20505
+## Title: PickMe
+## Notes: Auto-whisper LFG listings - get picked for dungeon groups faster
+## Author: kaldown
+## Version: @project-version@
+## IconTexture: Interface\Icons\INV_Letter_15
+## SavedVariables: PickMeDB
+## X-License: MIT
+
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+Libs\LibDBIcon-1.0\lib.xml
+
+Core.lua
+WhisperQueue.lua
+Scanner.lua
+UI.lua
