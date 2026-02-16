@@ -6,6 +6,8 @@
 ## IconTexture: Interface\Icons\INV_Letter_15
 ## SavedVariables: PickMeDB
 ## X-License: MIT
+## X-Curse-Project-ID: 1464291
+## X-Wago-ID: rNkydmKa
 
 Libs\LibStub\LibStub.lua
 Libs\CallbackHandler-1.0\CallbackHandler-1.0.lua
