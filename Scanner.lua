@@ -146,17 +146,19 @@ local function ScanLFGResults()
                 -- Try to get per-member class/role data
                 local members = GetMemberInfo(resultID, numMembers)
                 local leaderClass = nil
+                local leaderLevel = 0
                 if members and #members > 0 then
                     -- For singles, the only member is the leader
                     -- For groups, member index 1 is commonly the leader
                     leaderClass = members[1].class
+                    leaderLevel = members[1].level or 0
                 end
 
                 local listing = {
                     resultID = resultID,
                     leaderName = leader,
                     leaderClass = leaderClass,
-                    leaderLevel = 0,     -- not available
+                    leaderLevel = leaderLevel,
                     dungeon = dungeon,
                     numMembers = numMembers,
                     roleCounts = roleCounts,
