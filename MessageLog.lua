@@ -537,14 +537,6 @@ end
 --------------------------------------------------------------
 
 local function GetFilteredListings()
-    -- Not listed = nothing to show, clear stale results
-    if PickMe.HasActiveListing and not PickMe:HasActiveListing() then
-        if PickMe.ClearScanResults then
-            PickMe:ClearScanResults()
-        end
-        return {}, 0
-    end
-
     local rawListings
     if activeMode == "groups" then
         rawListings = PickMe:GetGroupResults()

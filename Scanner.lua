@@ -194,9 +194,9 @@ end
 
 local function OnEvent(self, event, ...)
     if event == "LFG_LIST_ACTIVE_ENTRY_EXPIRED" then
-        -- Notify UI to re-evaluate (it checks HasActiveListing)
-        if PickMe.OnScanResultsUpdated then
-            PickMe:OnScanResultsUpdated()
+        -- Only clear if we truly have no active listing
+        if not PickMe:HasActiveListing() then
+            ClearScanResults()
         end
         return
     end
@@ -228,10 +228,6 @@ function PickMe:HasActiveListing()
     end
     local ok, hasActive = pcall(C_LFGList.HasActiveEntryInfo)
     return ok and hasActive
-end
-
-function PickMe:ClearScanResults()
-    ClearScanResults()
 end
 
 function PickMe:GetGroupResults()
