@@ -11,6 +11,20 @@ local ROW_HEIGHT = 26
 local VISIBLE_ROWS = 9
 local ACCENT = { r = 0, g = 0.8, b = 0.4 }
 
+-- Role icon texture (horizontal strip: tank, healer, dps, leader)
+local ROLE_ICON_TEXTURE = "Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES"
+local ROLE_ICON_SIZE = 14
+local ROLE_ICON_COORDS = {
+    TANK    = { 0,    0.25, 0, 1 },
+    HEALER  = { 0.25, 0.5,  0, 1 },
+    DAMAGER = { 0.5,  0.75, 0, 1 },
+}
+local MAX_ROLE_ICONS = 5
+
+-- Note/message badge texture
+local NOTE_ICON_TEXTURE = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"
+local NOTE_ICON_SIZE = 12
+
 local FE = nil
 local activeMode = "groups"
 
@@ -36,26 +50,6 @@ local function FormatRelativeTime(timestamp)
     end
 end
 
---- Build a compact role count string from GetSearchResultMemberCounts data
---- e.g. "1T 1H 2D"
-local function FormatRoleCounts(roleCounts, numMembers)
-    if not roleCounts then
-        return numMembers and (numMembers .. " members") or ""
-    end
-    local parts = {}
-    local t = roleCounts.TANK or 0
-    local h = roleCounts.HEALER or 0
-    local d = roleCounts.DAMAGER or 0
-    local n = roleCounts.NOROLE or 0
-    if t > 0 then parts[#parts + 1] = t .. "T" end
-    if h > 0 then parts[#parts + 1] = h .. "H" end
-    if d > 0 then parts[#parts + 1] = d .. "D" end
-    if n > 0 then parts[#parts + 1] = n .. "?" end
-    if #parts == 0 then
-        return numMembers and (numMembers .. " members") or ""
-    end
-    return table.concat(parts, " ")
-end
 
 --------------------------------------------------------------
 -- Main frame
