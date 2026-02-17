@@ -61,6 +61,37 @@ local function GetRoleCounts(resultID)
 end
 
 --------------------------------------------------------------
+-- Extract per-member class/role data from a listing
+--------------------------------------------------------------
+
+local hasMemberInfo = nil  -- nil = unknown, true/false after first check
+
+local function GetMemberInfo(resultID, numMembers)
+    -- Check API availability (cache after first attempt)
+    if hasMemberInfo == false then return nil end
+    if not C_LFGList.GetSearchResultMemberInfo then
+        hasMemberInfo = false
+        return nil
+    end
+
+    local members = {}
+    for i = 1, (numMembers or 1) do
+        local ok, role, class = pcall(C_LFGList.GetSearchResultMemberInfo, resultID, i)
+        if ok and role and class then
+            hasMemberInfo = true
+            members[#members + 1] = { role = role, class = class }
+        elseif not ok then
+            -- API doesn't work on this client
+            hasMemberInfo = false
+            return nil
+        end
+    end
+
+    if #members == 0 then return nil end
+    return members
+end
+
+--------------------------------------------------------------
 -- Scan LFG Browse results
 --------------------------------------------------------------
 
@@ -94,15 +125,25 @@ local function ScanLFGResults()
                     seekingRoles = FE.InferSeekingRoles(roleCounts, numMembers)
                 end
 
+                -- Try to get per-member class/role data
+                local members = GetMemberInfo(resultID, numMembers)
+                local leaderClass = nil
+                if members and #members > 0 then
+                    -- For singles, the only member is the leader
+                    -- For groups, member index 1 is commonly the leader
+                    leaderClass = members[1].class
+                end
+
                 local listing = {
                     resultID = resultID,
                     leaderName = leader,
-                    leaderClass = nil,   -- not available without GetSearchResultMemberInfo
+                    leaderClass = leaderClass,
                     leaderLevel = 0,     -- not available
                     dungeon = dungeon,
                     numMembers = numMembers,
                     roleCounts = roleCounts,
                     seekingRoles = seekingRoles,
+                    members = members,   -- per-member {role, class} if available
                     description = info.name or "",  -- listing title/description
                     comment = info.comment or "",    -- listing comment if available
                 }
