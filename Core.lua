@@ -196,7 +196,12 @@ local dataObject = LDB:NewDataObject("PickMe", {
 --------------------------------------------------------------
 
 SLASH_PICKME1 = "/pickme"
-SlashCmdList["PICKME"] = function()
+SlashCmdList["PICKME"] = function(msg)
+    local cmd = (msg or ""):trim():lower()
+    if cmd == "debug" then
+        if PickMe.DebugMemberInfo then PickMe:DebugMemberInfo() end
+        return
+    end
     if PickMe.ToggleMainFrame then PickMe:ToggleMainFrame() end
 end
 

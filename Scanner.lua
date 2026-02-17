@@ -72,34 +72,66 @@ local hasMemberInfo = nil  -- nil = unknown, true/false after first check
 local function GetMemberInfo(resultID, numMembers)
     -- Check API availability (cache after first attempt)
     if hasMemberInfo == false then return nil end
-    if not C_LFGList.GetSearchResultMemberInfo then
+
+    -- Prefer GetSearchResultPlayerInfo (returns level, name, class, role)
+    -- Fall back to GetSearchResultMemberInfo (returns role, class only)
+    local hasPlayerInfo = C_LFGList.GetSearchResultPlayerInfo
+    local hasMemberInfoAPI = C_LFGList.GetSearchResultMemberInfo
+
+    if not hasPlayerInfo and not hasMemberInfoAPI then
         hasMemberInfo = false
         return nil
     end
 
     local members = {}
     for i = 1, (numMembers or 1) do
-        local ok, role, class, classLocalized, specLocalized, level = pcall(
-            C_LFGList.GetSearchResultMemberInfo, resultID, i
-        )
-        if ok and role and class then
-            hasMemberInfo = true
-            local member = { role = role, class = class }
-            if type(classLocalized) == "string" and classLocalized ~= "" then
-                member.classLocalized = classLocalized
+        local member = nil
+
+        -- Try GetSearchResultPlayerInfo first (richer data with level)
+        if hasPlayerInfo then
+            local ok, pInfo = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
+            if ok and pInfo and pInfo.assignedRole and pInfo.classFilename then
+                hasMemberInfo = true
+                member = {
+                    role = pInfo.assignedRole,
+                    class = pInfo.classFilename,
+                    classLocalized = pInfo.className,
+                }
+                if type(pInfo.level) == "number" and pInfo.level > 0 then
+                    member.level = pInfo.level
+                end
+            elseif not ok then
+                hasPlayerInfo = nil  -- disable for remaining members
             end
-            if type(level) == "number" and level > 0 then
-                member.level = level
+        end
+
+        -- Fallback to GetSearchResultMemberInfo if PlayerInfo unavailable
+        if not member and hasMemberInfoAPI then
+            local ok, role, class, classLocalized = pcall(
+                C_LFGList.GetSearchResultMemberInfo, resultID, i
+            )
+            if ok and role and class then
+                hasMemberInfo = true
+                member = { role = role, class = class }
+                if type(classLocalized) == "string" and classLocalized ~= "" then
+                    member.classLocalized = classLocalized
+                end
+            elseif not ok then
+                hasMemberInfoAPI = nil  -- disable for remaining members
             end
+        end
+
+        if member then
             members[#members + 1] = member
-        elseif not ok then
-            -- API doesn't work on this client
-            hasMemberInfo = false
-            return nil
         end
     end
 
-    if #members == 0 then return nil end
+    if #members == 0 then
+        if not hasPlayerInfo and not hasMemberInfoAPI then
+            hasMemberInfo = false
+        end
+        return nil
+    end
     return members
 end
 
@@ -257,4 +289,101 @@ function PickMe:ManualScan()
     local groups = #scanResults.groups
     local singles = #scanResults.singles
     self:Print("Scan: " .. groups .. " groups, " .. singles .. " singles.")
+end
+
+function PickMe:DebugMemberInfo()
+    if not C_LFGList or not C_LFGList.GetSearchResults then
+        self:Print("Debug: C_LFGList.GetSearchResults not available")
+        return
+    end
+
+    -- Dump all C_LFGList function names
+    self:Print("Debug: C_LFGList functions:")
+    local funcs = {}
+    for k, v in pairs(C_LFGList) do
+        if type(v) == "function" then
+            funcs[#funcs + 1] = k
+        end
+    end
+    table.sort(funcs)
+    self:Print("  " .. table.concat(funcs, ", "))
+
+    local ok, _, results = pcall(C_LFGList.GetSearchResults)
+    if not ok or not results or #results == 0 then
+        self:Print("Debug: No search results. Open LFG Browse panel first.")
+        return
+    end
+
+    self:Print("Debug: " .. #results .. " search results found")
+
+    -- Check API existence
+    if not C_LFGList.GetSearchResultMemberInfo then
+        self:Print("Debug: GetSearchResultMemberInfo does NOT exist on this client")
+        return
+    end
+    self:Print("Debug: GetSearchResultMemberInfo exists")
+
+    -- Try first result
+    local resultID = results[1]
+    local ok2, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
+    if ok2 and info then
+        self:Print("Debug: Result " .. resultID .. " -- GetSearchResultInfo fields:")
+        local keys = {}
+        for k in pairs(info) do keys[#keys + 1] = k end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+            local v = info[k]
+            if type(v) == "table" then
+                local parts = {}
+                for tk, tv in pairs(v) do
+                    parts[#parts + 1] = tostring(tk) .. "=" .. tostring(tv)
+                end
+                self:Print("  " .. k .. ": (table) {" .. table.concat(parts, ", ") .. "}")
+            else
+                self:Print("  " .. k .. ": (" .. type(v) .. ") " .. tostring(v))
+            end
+        end
+    end
+
+    -- Helper to dump a table's fields
+    local function DumpTable(label, tbl)
+        if type(tbl) ~= "table" then
+            self:Print(label .. ": (" .. type(tbl) .. ") " .. tostring(tbl))
+            return
+        end
+        self:Print(label .. ":")
+        local keys = {}
+        for k in pairs(tbl) do keys[#keys + 1] = tostring(k) end
+        table.sort(keys)
+        for _, k in ipairs(keys) do
+            local v = tbl[k] or tbl[tonumber(k)]
+            self:Print("  " .. k .. ": (" .. type(v) .. ") " .. tostring(v))
+        end
+    end
+
+    -- Dump GetSearchResultLeaderInfo (returns a table)
+    if C_LFGList.GetSearchResultLeaderInfo then
+        local ok3, leaderInfo = pcall(C_LFGList.GetSearchResultLeaderInfo, resultID)
+        if ok3 and leaderInfo then
+            DumpTable("Debug: GetSearchResultLeaderInfo(" .. resultID .. ")", leaderInfo)
+        else
+            self:Print("Debug: GetSearchResultLeaderInfo failed: " .. tostring(leaderInfo))
+        end
+    end
+
+    -- Dump GetSearchResultPlayerInfo (requires resultID, memberIndex)
+    if C_LFGList.GetSearchResultPlayerInfo then
+        local numMembers = (ok2 and info and info.numMembers) or 1
+        local limit = numMembers < 2 and numMembers or 2
+        for i = 1, limit do
+            local ok4, playerInfo = pcall(C_LFGList.GetSearchResultPlayerInfo, resultID, i)
+            if ok4 and playerInfo then
+                DumpTable("Debug: GetSearchResultPlayerInfo(" .. resultID .. ", " .. i .. ")", playerInfo)
+            elseif ok4 then
+                self:Print("Debug: GetSearchResultPlayerInfo(" .. resultID .. ", " .. i .. ") returned nil")
+            else
+                self:Print("Debug: GetSearchResultPlayerInfo(" .. resultID .. ", " .. i .. ") failed: " .. tostring(playerInfo))
+            end
+        end
+    end
 end
