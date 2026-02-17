@@ -13,6 +13,9 @@ local scanResults = {
     singles = {},
 }
 
+-- Forward declaration (defined in Event handling section)
+local ClearScanResults
+
 --------------------------------------------------------------
 -- Activity ID to dungeon name resolution
 --------------------------------------------------------------
@@ -76,7 +79,7 @@ local function GetMemberInfo(resultID, numMembers)
 
     local members = {}
     for i = 1, (numMembers or 1) do
-        local ok, role, class, classLocalized = pcall(
+        local ok, role, class, classLocalized, specLocalized, level = pcall(
             C_LFGList.GetSearchResultMemberInfo, resultID, i
         )
         if ok and role and class then
@@ -84,6 +87,9 @@ local function GetMemberInfo(resultID, numMembers)
             local member = { role = role, class = class }
             if type(classLocalized) == "string" and classLocalized ~= "" then
                 member.classLocalized = classLocalized
+            end
+            if type(level) == "number" and level > 0 then
+                member.level = level
             end
             members[#members + 1] = member
         elseif not ok then
@@ -104,6 +110,12 @@ end
 local function ScanLFGResults()
     if not C_LFGList or not C_LFGList.GetSearchResults then return end
     if not C_LFGList.GetSearchResultInfo then return end
+
+    -- Don't process results if player has no active listing
+    if not PickMe:HasActiveListing() then
+        ClearScanResults()
+        return
+    end
 
     local myName = playerName or UnitName("player")
     playerName = myName
@@ -184,7 +196,7 @@ end
 -- Event handling
 --------------------------------------------------------------
 
-local function ClearScanResults()
+ClearScanResults = function()
     scanResults.groups = {}
     scanResults.singles = {}
     if PickMe.OnScanResultsUpdated then
