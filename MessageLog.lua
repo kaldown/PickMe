@@ -572,6 +572,19 @@ local UpdateListings
 UpdateListings = function()
     if not frame:IsShown() then return end
 
+    -- If player has no active listing, force empty state
+    if PickMe.HasActiveListing and not PickMe:HasActiveListing() then
+        totalCount = 0
+        filteredCount = 0
+        FauxScrollFrame_Update(scrollFrame, 0, VISIBLE_ROWS, ROW_HEIGHT)
+        emptyText:SetText("List yourself in LFG to start scanning")
+        emptyText:Show()
+        for i = 1, VISIBLE_ROWS do
+            rows[i]:Hide()
+        end
+        return
+    end
+
     local listings, rawTotal = GetFilteredListings()
     totalCount = rawTotal
     filteredCount = rawTotal - #listings
@@ -583,8 +596,6 @@ UpdateListings = function()
     if numItems == 0 then
         if rawTotal > 0 then
             emptyText:SetText("All listings filtered out (" .. rawTotal .. " hidden)")
-        elseif PickMe.HasActiveListing and not PickMe:HasActiveListing() then
-            emptyText:SetText("List yourself in LFG to start scanning")
         else
             emptyText:SetText("No LFG listings found\nOpen the LFG Browse panel to scan")
         end
