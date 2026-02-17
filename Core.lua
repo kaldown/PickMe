@@ -178,32 +178,16 @@ local dataObject = LDB:NewDataObject("PickMe", {
     icon = "Interface\\Icons\\INV_Letter_15",
     OnClick = function(_, button)
         if button == "LeftButton" then
-            if IsShiftKeyDown() then
-                if PickMe.ToggleFrame then PickMe:ToggleFrame() end
-            else
-                if PickMe.ToggleMessageFrame then PickMe:ToggleMessageFrame() end
-            end
-        elseif button == "RightButton" then
-            if PickMeDB.profile.enabled then
-                PickMe:Disable()
-            else
-                PickMe:Enable()
-            end
+            if PickMe.ToggleMainFrame then PickMe:ToggleMainFrame() end
         end
     end,
     OnTooltipShow = function(tooltip)
         tooltip:AddLine("PickMe v" .. VERSION, 0, 0.8, 0.4)
         tooltip:AddLine(" ")
-        local db = PickMeDB.profile
-        local status = db.enabled and (PickMe.paused and "|cFFFFFF00PAUSED|r" or "|cFF00FF00ON|r") or "|cFFFF0000OFF|r"
-        tooltip:AddLine("Status: " .. status, 1, 1, 1)
         local historyCount = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
-        local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
-        tooltip:AddLine(queued .. " queued | " .. historyCount .. " whispered", 0.7, 0.7, 0.7)
+        tooltip:AddLine(historyCount .. " whispered", 0.7, 0.7, 0.7)
         tooltip:AddLine(" ")
-        tooltip:AddLine("|cFFFFFFFFLeft-click:|r Messages", 0.7, 0.7, 0.7)
-        tooltip:AddLine("|cFFFFFFFFShift-click:|r Settings", 0.7, 0.7, 0.7)
-        tooltip:AddLine("|cFFFFFFFFRight-click:|r Toggle ON/OFF", 0.7, 0.7, 0.7)
+        tooltip:AddLine("|cFFFFFFFFClick:|r Open PickMe", 0.7, 0.7, 0.7)
     end,
 })
 
@@ -213,7 +197,7 @@ local dataObject = LDB:NewDataObject("PickMe", {
 
 SLASH_PICKME1 = "/pickme"
 SlashCmdList["PICKME"] = function()
-    if PickMe.ToggleFrame then PickMe:ToggleFrame() end
+    if PickMe.ToggleMainFrame then PickMe:ToggleMainFrame() end
 end
 
 --------------------------------------------------------------
@@ -227,7 +211,7 @@ eventFrame:SetScript("OnEvent", function(self, event)
         InitializeDB()
         PickMe.paused = PickMeDB.profile.paused or false
         LDBIcon:Register("PickMe", dataObject, PickMeDB.minimap)
-        PickMe:Print("v" .. VERSION .. " loaded. Use minimap button to configure.")
+        PickMe:Print("v" .. VERSION .. " loaded. Type /pickme or click minimap button.")
         if PickMe.RegisterScannerEvents then
             PickMe:RegisterScannerEvents()
         end
