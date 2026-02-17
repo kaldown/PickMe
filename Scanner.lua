@@ -197,7 +197,10 @@ end
 
 local function OnEvent(self, event, ...)
     if event == "LFG_LIST_ACTIVE_ENTRY_EXPIRED" then
-        ClearScanResults()
+        -- Only clear if we truly have no active listing
+        if not PickMe:HasActiveListing() then
+            ClearScanResults()
+        end
         return
     end
     ScanLFGResults()
