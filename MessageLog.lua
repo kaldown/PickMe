@@ -510,55 +510,83 @@ local function CreateListingRow(index)
     row:SetScript("OnEnter", function(self)
         if not self.tooltipData then return end
         local d = self.tooltipData
-        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-        GameTooltip:AddLine(d.leaderName or "", ACCENT.r, ACCENT.g, ACCENT.b)
-        GameTooltip:AddLine(d.dungeon or "", 0.9, 0.9, 0.9)
-        if d.description and d.description ~= "" then
-            GameTooltip:AddLine(d.description, 1, 1, 1, true)
-        end
         local fe = GetFilterEngine()
-        if d.members and fe then
-            -- Per-role class breakdown with colored class names
+
+        GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+
+        -- Header: dungeon name
+        GameTooltip:AddLine(d.dungeon or "Unknown", 1, 1, 1)
+
+        -- Member list: role icon + class-colored name + level
+        if d.members and fe and #d.members > 0 then
             GameTooltip:AddLine(" ")
-            local byRole = { TANK = {}, HEALER = {}, DAMAGER = {}, NOROLE = {} }
+            -- Sort: tanks, healers, DPS, norole
+            local sorted = {}
             for _, m in ipairs(d.members) do
-                local r = m.role or "NOROLE"
-                if not byRole[r] then byRole[r] = {} end
-                local display = fe.CLASS_DISPLAY[m.class] or m.class or "?"
-                -- Add level prefix if available
-                if m.level then
-                    display = m.level .. " " .. display
+                sorted[#sorted + 1] = m
+            end
+            local roleSort = { TANK = 1, HEALER = 2, DAMAGER = 3 }
+            table.sort(sorted, function(a, b)
+                return (roleSort[a.role] or 4) < (roleSort[b.role] or 4)
+            end)
+
+            for _, m in ipairs(sorted) do
+                -- Build inline role icon
+                local roleIcon = ""
+                local coords = ROLE_ICON_COORDS[m.role]
+                if coords then
+                    roleIcon = string.format(
+                        "|T%s:0:0:0:0:64:16:%d:%d:%d:%d|t ",
+                        ROLE_ICON_TEXTURE,
+                        coords[1] * 64, coords[2] * 64,
+                        coords[3] * 16, coords[4] * 16
+                    )
                 end
-                -- Wrap in class color escape code
-                local cc = fe.CLASS_COLORS[m.class]
+
+                -- Class-colored name
+                local name = m.classLocalized or (fe.CLASS_DISPLAY and fe.CLASS_DISPLAY[m.class]) or m.class or "Unknown"
+                local cc = fe.CLASS_COLORS and fe.CLASS_COLORS[m.class]
                 if cc then
                     local hex = string.format("|cFF%02x%02x%02x", cc.r * 255, cc.g * 255, cc.b * 255)
-                    display = hex .. display .. "|r"
+                    name = hex .. name .. "|r"
                 end
-                byRole[r][#byRole[r] + 1] = display
-            end
-            local roleOrder = { "TANK", "HEALER", "DAMAGER", "NOROLE" }
-            local roleLabels = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS", NOROLE = "Other" }
-            for _, r in ipairs(roleOrder) do
-                if byRole[r] and #byRole[r] > 0 then
-                    local line = roleLabels[r] .. ": " .. table.concat(byRole[r], ", ")
-                    GameTooltip:AddLine(line, 1, 1, 1)
+
+                -- Level
+                local lvlStr = ""
+                if m.level and m.level > 0 then
+                    lvlStr = "  Lvl " .. m.level
                 end
+
+                GameTooltip:AddLine(roleIcon .. name .. lvlStr, 1, 1, 1)
             end
-        elseif d.roleCounts then
-            -- Fallback: aggregate counts
+        end
+
+        -- Description in quotes
+        if d.description and d.description ~= "" then
             GameTooltip:AddLine(" ")
-            local t = d.roleCounts.TANK or 0
-            local h = d.roleCounts.HEALER or 0
-            local dd = d.roleCounts.DAMAGER or 0
-            GameTooltip:AddLine("Composition: " .. t .. " Tank, " .. h .. " Healer, " .. dd .. " DPS", 0.7, 0.7, 0.7)
+            GameTooltip:AddLine("\"" .. d.description .. "\"", 0.8, 0.8, 0.8, true)
         end
-        if d.seekingRoles and #d.seekingRoles > 0 then
-            local seekStr = table.concat(d.seekingRoles, ", ")
-            GameTooltip:AddLine("Seeking: " .. seekStr, 1, 0.82, 0)
-        end
+
+        -- Summary line
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(d.numMembers .. " members", 0.5, 0.5, 0.5)
+        local t = d.roleCounts and d.roleCounts.TANK or 0
+        local h = d.roleCounts and d.roleCounts.HEALER or 0
+        local dd = d.roleCounts and d.roleCounts.DAMAGER or 0
+        GameTooltip:AddLine(
+            "Members: " .. (d.numMembers or 0) .. " (" .. t .. "/" .. h .. "/" .. dd .. ")",
+            0.5, 0.5, 0.5
+        )
+
+        -- Seeking roles
+        if d.seekingRoles and #d.seekingRoles > 0 then
+            local seekDisplay = {}
+            local roleLabels = { TANK = "Tank", HEALER = "Healer", DPS = "DPS" }
+            for _, r in ipairs(d.seekingRoles) do
+                seekDisplay[#seekDisplay + 1] = roleLabels[r] or r
+            end
+            GameTooltip:AddLine("Seeking: " .. table.concat(seekDisplay, ", "), 1, 0.82, 0)
+        end
+
         GameTooltip:Show()
     end)
     row:SetScript("OnLeave", function()
