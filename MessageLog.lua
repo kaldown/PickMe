@@ -599,6 +599,94 @@ local function GetFilteredListings()
 end
 
 --------------------------------------------------------------
+-- Role icon helper
+--------------------------------------------------------------
+
+--- Populate role icons on a row from member data
+--- @param row table the listing row frame
+--- @param listing table the listing data
+local function SetRowRoleIcons(row, listing)
+    -- Hide all icons first
+    for ri = 1, MAX_ROLE_ICONS do
+        row.roleIcons[ri]:Hide()
+    end
+    row.noroleText:Hide()
+    row.memberCountText:Hide()
+
+    -- If we have per-member data, show individual role icons
+    if listing.members and #listing.members > 0 then
+        -- Sort: tanks first, then healers, then DPS, then norole
+        local sorted = {}
+        for _, m in ipairs(listing.members) do
+            sorted[#sorted + 1] = m
+        end
+        local roleOrder = { TANK = 1, HEALER = 2, DAMAGER = 3 }
+        table.sort(sorted, function(a, b)
+            return (roleOrder[a.role] or 4) < (roleOrder[b.role] or 4)
+        end)
+
+        local iconIndex = 0
+        for _, m in ipairs(sorted) do
+            local coords = ROLE_ICON_COORDS[m.role]
+            if coords then
+                iconIndex = iconIndex + 1
+                if iconIndex <= MAX_ROLE_ICONS then
+                    local icon = row.roleIcons[iconIndex]
+                    icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                    icon:Show()
+                end
+            else
+                -- NOROLE: show "?" after the last icon
+                row.noroleText:ClearAllPoints()
+                if iconIndex > 0 then
+                    row.noroleText:SetPoint("LEFT", row.roleIcons[iconIndex], "RIGHT", 2, 0)
+                else
+                    row.noroleText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
+                end
+                row.noroleText:Show()
+            end
+        end
+    elseif listing.roleCounts then
+        -- Fallback: show icons from aggregate counts
+        local iconIndex = 0
+        local roleSeq = { "TANK", "HEALER", "DAMAGER" }
+        for _, role in ipairs(roleSeq) do
+            local count = listing.roleCounts[role] or 0
+            local coords = ROLE_ICON_COORDS[role]
+            if coords then
+                for _ = 1, count do
+                    iconIndex = iconIndex + 1
+                    if iconIndex <= MAX_ROLE_ICONS then
+                        local icon = row.roleIcons[iconIndex]
+                        icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                        icon:Show()
+                    end
+                end
+            end
+        end
+        -- NOROLE from counts
+        local noroleCount = listing.roleCounts.NOROLE or 0
+        if noroleCount > 0 then
+            row.noroleText:ClearAllPoints()
+            if iconIndex > 0 then
+                row.noroleText:SetPoint("LEFT", row.roleIcons[iconIndex], "RIGHT", 2, 0)
+            else
+                row.noroleText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
+            end
+            row.noroleText:Show()
+        end
+        if iconIndex == 0 and noroleCount == 0 then
+            row.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
+            row.memberCountText:Show()
+        end
+    else
+        -- No role data at all
+        row.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
+        row.memberCountText:Show()
+    end
+end
+
+--------------------------------------------------------------
 -- Update listing display
 --------------------------------------------------------------
 
@@ -669,8 +757,19 @@ UpdateListings = function()
             end
             row.dungeonText:SetText(dungeon)
 
-            -- Role counts
-            row.compText:SetText(FormatRoleCounts(listing.roleCounts, listing.numMembers))
+            -- Role icons
+            SetRowRoleIcons(row, listing)
+
+            -- Note badge
+            if listing.description and listing.description ~= "" then
+                row.noteIcon:Show()
+                row.noteBadge.description = listing.description
+                row.noteBadge:Show()
+            else
+                row.noteIcon:Hide()
+                row.noteBadge.description = nil
+                row.noteBadge:Hide()
+            end
 
             -- Send button or Sent status
             local historyEntry = PickMe:FindInHistory(listing.leaderName)
@@ -722,6 +821,14 @@ UpdateListings = function()
             row:Show()
         else
             row:Hide()
+            -- Hide role icons and badge when row is hidden
+            for ri = 1, MAX_ROLE_ICONS do
+                row.roleIcons[ri]:Hide()
+            end
+            row.noroleText:Hide()
+            row.memberCountText:Hide()
+            row.noteIcon:Hide()
+            row.noteBadge:Hide()
         end
     end
 end
