@@ -212,9 +212,21 @@ eventFrame:SetScript("OnEvent", function(self, event)
         PickMe.paused = PickMeDB.profile.paused or false
         LDBIcon:Register("PickMe", dataObject, PickMeDB.minimap)
         PickMe:Print("v" .. VERSION .. " loaded. Type /pickme or click minimap button.")
+        -- Sweep expired history entries on login
+        if PickMe.SweepExpiredHistory then
+            PickMe:SweepExpiredHistory()
+        end
+
         if PickMe.RegisterScannerEvents then
             PickMe:RegisterScannerEvents()
         end
+
+        -- Periodic cooldown sweep (every 60 seconds)
+        C_Timer.NewTicker(60, function()
+            if PickMe.SweepExpiredHistory then
+                PickMe:SweepExpiredHistory()
+            end
+        end)
     end
 end)
 
