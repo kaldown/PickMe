@@ -76,10 +76,19 @@ local function GetMemberInfo(resultID, numMembers)
 
     local members = {}
     for i = 1, (numMembers or 1) do
-        local ok, role, class = pcall(C_LFGList.GetSearchResultMemberInfo, resultID, i)
+        local ok, role, class, classLocalized, specLocalized, level = pcall(
+            C_LFGList.GetSearchResultMemberInfo, resultID, i
+        )
         if ok and role and class then
             hasMemberInfo = true
-            members[#members + 1] = { role = role, class = class }
+            local member = { role = role, class = class }
+            if classLocalized and classLocalized ~= "" then
+                member.classLocalized = classLocalized
+            end
+            if level and level > 0 then
+                member.level = level
+            end
+            members[#members + 1] = member
         elseif not ok then
             -- API doesn't work on this client
             hasMemberInfo = false

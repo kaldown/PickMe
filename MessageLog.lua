@@ -478,13 +478,23 @@ local function CreateListingRow(index)
         end
         local fe = GetFilterEngine()
         if d.members and fe then
-            -- Per-role class breakdown
+            -- Per-role class breakdown with colored class names
             GameTooltip:AddLine(" ")
             local byRole = { TANK = {}, HEALER = {}, DAMAGER = {}, NOROLE = {} }
             for _, m in ipairs(d.members) do
                 local r = m.role or "NOROLE"
                 if not byRole[r] then byRole[r] = {} end
                 local display = fe.CLASS_DISPLAY[m.class] or m.class or "?"
+                -- Add level prefix if available
+                if m.level then
+                    display = m.level .. " " .. display
+                end
+                -- Wrap in class color escape code
+                local cc = fe.CLASS_COLORS[m.class]
+                if cc then
+                    local hex = string.format("|cFF%02x%02x%02x", cc.r * 255, cc.g * 255, cc.b * 255)
+                    display = hex .. display .. "|r"
+                end
                 byRole[r][#byRole[r] + 1] = display
             end
             local roleOrder = { "TANK", "HEALER", "DAMAGER", "NOROLE" }
@@ -492,7 +502,7 @@ local function CreateListingRow(index)
             for _, r in ipairs(roleOrder) do
                 if byRole[r] and #byRole[r] > 0 then
                     local line = roleLabels[r] .. ": " .. table.concat(byRole[r], ", ")
-                    GameTooltip:AddLine(line, 0.7, 0.7, 0.7)
+                    GameTooltip:AddLine(line, 1, 1, 1)
                 end
             end
         elseif d.roleCounts then
