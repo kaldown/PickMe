@@ -78,12 +78,14 @@ end
 local function PassesFilter(listing, filters, mode)
     if not filters then return true end
 
-    -- Min level filter (only effective if we have level data)
-    if filters.minLevel and filters.minLevel > 0 then
-        local level = listing.leaderLevel or 0
-        -- If level is 0 (unknown), don't filter it out
-        if level > 0 and level < filters.minLevel then
-            return false
+    -- Min level filter: check ALL members, filter if any member is below threshold
+    if filters.minLevel and filters.minLevel > 0 and listing.members then
+        for _, m in ipairs(listing.members) do
+            local lvl = m.level or 0
+            -- If level is 0 (unknown), don't filter on this member
+            if lvl > 0 and lvl < filters.minLevel then
+                return false
+            end
         end
     end
 
