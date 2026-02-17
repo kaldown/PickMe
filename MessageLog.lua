@@ -361,13 +361,14 @@ for i, class in ipairs(CLASS_LIST) do
         end
     end)
 
-    classCheckboxes[class] = cb
+    classCheckboxes[class] = { cb = cb, label = label }
 end
 
 -- Track class filter UI elements for show/hide based on mode
 local classFilterElements = { classLabel }
-for _, cb in pairs(classCheckboxes) do
-    classFilterElements[#classFilterElements + 1] = cb
+for _, pair in pairs(classCheckboxes) do
+    classFilterElements[#classFilterElements + 1] = pair.cb
+    classFilterElements[#classFilterElements + 1] = pair.label
 end
 
 local function UpdateClassFilterVisibility()
@@ -691,7 +692,7 @@ local function LoadModeConfig()
         for _, c in ipairs(exclClasses) do
             if c == class then isExcl = true; break end
         end
-        classCheckboxes[class]:SetChecked(isExcl)
+        classCheckboxes[class].cb:SetChecked(isExcl)
     end
 end
 

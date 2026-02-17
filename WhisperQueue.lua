@@ -209,7 +209,8 @@ function PickMe:Enqueue(name, dungeon)
 
     -- Start ticker if not running
     if not queueTicker then
-        queueTicker = C_Timer.NewTicker(PickMeDB.settings.whisperDelay or 3, ProcessQueue)
+        local delay = (PickMeDB and PickMeDB.settings and PickMeDB.settings.whisperDelay) or 3
+        queueTicker = C_Timer.NewTicker(delay, ProcessQueue)
     end
 
     return true
