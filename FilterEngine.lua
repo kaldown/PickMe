@@ -58,25 +58,10 @@ local function InferSeekingRoles(roleCounts, numMembers)
     if (roleCounts.HEALER or 0) < 1 then
         seeking[#seeking + 1] = "HEALER"
     end
-    -- If group has tank and healer, they need DPS
-    -- Also if group is small (< 5), they probably need DPS
-    if (numMembers or 1) < 5 then
-        local hasTank = (roleCounts.TANK or 0) >= 1
-        local hasHealer = (roleCounts.HEALER or 0) >= 1
-        if hasTank and hasHealer then
-            seeking[#seeking + 1] = "DPS"
-        end
-    end
-    -- NOROLE members: group composition is ambiguous, add DPS as fallback
-    if (roleCounts.NOROLE or 0) > 0 then
-        -- Don't filter too aggressively when data is ambiguous
-        local hasDPS = false
-        for _, s in ipairs(seeking) do
-            if s == "DPS" then hasDPS = true; break end
-        end
-        if not hasDPS then
-            seeking[#seeking + 1] = "DPS"
-        end
+    -- Group needs DPS if they have fewer than 3 and aren't full
+    local dpsCount = (roleCounts.DAMAGER or 0) + (roleCounts.NOROLE or 0)
+    if dpsCount < 3 and (numMembers or 1) < 5 then
+        seeking[#seeking + 1] = "DPS"
     end
     return seeking
 end
