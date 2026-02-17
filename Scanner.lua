@@ -178,7 +178,19 @@ end
 -- Event handling
 --------------------------------------------------------------
 
+local function ClearScanResults()
+    scanResults.groups = {}
+    scanResults.singles = {}
+    if PickMe.OnScanResultsUpdated then
+        PickMe:OnScanResultsUpdated()
+    end
+end
+
 local function OnEvent(self, event, ...)
+    if event == "LFG_LIST_ACTIVE_ENTRY_EXPIRED" then
+        ClearScanResults()
+        return
+    end
     ScanLFGResults()
 end
 
@@ -189,6 +201,7 @@ end
 function PickMe:RegisterScannerEvents()
     pcall(scannerFrame.RegisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULTS_RECEIVED")
     pcall(scannerFrame.RegisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULT_UPDATED")
+    pcall(scannerFrame.RegisterEvent, scannerFrame, "LFG_LIST_ACTIVE_ENTRY_EXPIRED")
     scannerFrame:SetScript("OnEvent", OnEvent)
     isRegistered = true
 end
@@ -196,7 +209,16 @@ end
 function PickMe:UnregisterScannerEvents()
     pcall(scannerFrame.UnregisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULTS_RECEIVED")
     pcall(scannerFrame.UnregisterEvent, scannerFrame, "LFG_LIST_SEARCH_RESULT_UPDATED")
+    pcall(scannerFrame.UnregisterEvent, scannerFrame, "LFG_LIST_ACTIVE_ENTRY_EXPIRED")
     isRegistered = false
+end
+
+function PickMe:HasActiveListing()
+    if not C_LFGList or not C_LFGList.HasActiveEntryInfo then
+        return false
+    end
+    local ok, hasActive = pcall(C_LFGList.HasActiveEntryInfo)
+    return ok and hasActive
 end
 
 function PickMe:GetGroupResults()

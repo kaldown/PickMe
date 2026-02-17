@@ -573,6 +573,8 @@ UpdateListings = function()
     if numItems == 0 then
         if rawTotal > 0 then
             emptyText:SetText("All listings filtered out (" .. rawTotal .. " hidden)")
+        elseif PickMe.HasActiveListing and not PickMe:HasActiveListing() then
+            emptyText:SetText("List yourself in LFG to start scanning")
         else
             emptyText:SetText("No LFG listings found\nOpen the LFG Browse panel to scan")
         end
