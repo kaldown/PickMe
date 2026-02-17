@@ -76,17 +76,14 @@ local function GetMemberInfo(resultID, numMembers)
 
     local members = {}
     for i = 1, (numMembers or 1) do
-        local ok, role, class, classLocalized, specLocalized, level = pcall(
+        local ok, role, class, classLocalized = pcall(
             C_LFGList.GetSearchResultMemberInfo, resultID, i
         )
         if ok and role and class then
             hasMemberInfo = true
             local member = { role = role, class = class }
-            if classLocalized and classLocalized ~= "" then
+            if type(classLocalized) == "string" and classLocalized ~= "" then
                 member.classLocalized = classLocalized
-            end
-            if level and level > 0 then
-                member.level = level
             end
             members[#members + 1] = member
         elseif not ok then
