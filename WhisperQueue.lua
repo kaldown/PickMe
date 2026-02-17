@@ -73,6 +73,25 @@ local function IsInHistory(name)
     return false
 end
 
+function PickMe:FindInHistory(name)
+    if not PickMeDB or not PickMeDB.history then return nil end
+    for _, entry in ipairs(PickMeDB.history) do
+        if entry.name == name then return entry end
+    end
+    return nil
+end
+
+function PickMe:ClearHistoryEntry(name)
+    if not PickMeDB or not PickMeDB.history then return end
+    for i = #PickMeDB.history, 1, -1 do
+        if PickMeDB.history[i].name == name then
+            table.remove(PickMeDB.history, i)
+            return true
+        end
+    end
+    return false
+end
+
 local function AddToHistory(name, dungeon)
     if not PickMeDB then return end
     PickMeDB.history = PickMeDB.history or {}
@@ -81,6 +100,63 @@ local function AddToHistory(name, dungeon)
     while #PickMeDB.history > HISTORY_CAP do
         table.remove(PickMeDB.history, 1)
     end
+end
+
+--------------------------------------------------------------
+-- Cooldown auto-clean
+--------------------------------------------------------------
+
+local function SweepExpiredHistory()
+    if not PickMeDB or not PickMeDB.history then return end
+    local cooldownSec = (PickMeDB.settings and PickMeDB.settings.cooldownHours or 4) * 3600
+    local now = time()
+    local i = 1
+    while i <= #PickMeDB.history do
+        if now - (PickMeDB.history[i].time or 0) > cooldownSec then
+            table.remove(PickMeDB.history, i)
+        else
+            i = i + 1
+        end
+    end
+end
+
+--------------------------------------------------------------
+-- Manual send (per-recipient button click)
+--------------------------------------------------------------
+
+local lastManualSendTime = 0  -- GetTime() float
+
+function PickMe:SendWhisper(name, dungeon, mode)
+    if IsInHistory(name) then
+        self:Print(name .. " already whispered (cooldown active).")
+        return false
+    end
+
+    local template = PickMeDB.modes[mode] and PickMeDB.modes[mode].template
+        or PickMeDB.modes.groups.template
+    local msg = SubstituteTemplate(template, { name = name, dungeon = dungeon })
+    SendChatMessage(msg, "WHISPER", nil, name)
+    AddToHistory(name, dungeon)
+    lastManualSendTime = GetTime()
+
+    self:Print("Whispered " .. name .. " (" .. dungeon .. ")")
+    return true
+end
+
+function PickMe:GetLastSendTime()
+    return lastManualSendTime
+end
+
+function PickMe:IsThrottled()
+    local delay = PickMeDB.settings and PickMeDB.settings.whisperDelay or 3
+    return (GetTime() - lastManualSendTime) < delay
+end
+
+function PickMe:GetThrottleRemaining()
+    local delay = PickMeDB.settings and PickMeDB.settings.whisperDelay or 3
+    local elapsed = GetTime() - lastManualSendTime
+    if elapsed >= delay then return 0 end
+    return delay - elapsed
 end
 
 function PickMe:GetQueueCount()
@@ -105,7 +181,7 @@ local function ProcessQueue()
     -- Final dedup check (might have been whispered while in queue)
     if IsInHistory(target.name) then return end
 
-    local msg = SubstituteTemplate(PickMeDB.profile.template, target)
+    local msg = SubstituteTemplate(PickMeDB.modes.groups.template, target)
     SendChatMessage(msg, "WHISPER", nil, target.name)
     AddToHistory(target.name, target.dungeon)
 
@@ -133,7 +209,7 @@ function PickMe:Enqueue(name, dungeon)
 
     -- Start ticker if not running
     if not queueTicker then
-        queueTicker = C_Timer.NewTicker(PickMeDB.profile.whisperDelay, ProcessQueue)
+        queueTicker = C_Timer.NewTicker(PickMeDB.settings.whisperDelay or 3, ProcessQueue)
     end
 
     return true
@@ -186,4 +262,8 @@ function PickMe:ClearHistory()
         PickMeDB.history = {}
     end
     self:Print("Whisper history cleared.")
+end
+
+function PickMe:SweepExpiredHistory()
+    SweepExpiredHistory()
 end
