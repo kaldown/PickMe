@@ -476,7 +476,27 @@ local function CreateListingRow(index)
         if d.description and d.description ~= "" then
             GameTooltip:AddLine(d.description, 1, 1, 1, true)
         end
-        if d.roleCounts then
+        local fe = GetFilterEngine()
+        if d.members and fe then
+            -- Per-role class breakdown
+            GameTooltip:AddLine(" ")
+            local byRole = { TANK = {}, HEALER = {}, DAMAGER = {}, NOROLE = {} }
+            for _, m in ipairs(d.members) do
+                local r = m.role or "NOROLE"
+                if not byRole[r] then byRole[r] = {} end
+                local display = fe.CLASS_DISPLAY[m.class] or m.class or "?"
+                byRole[r][#byRole[r] + 1] = display
+            end
+            local roleOrder = { "TANK", "HEALER", "DAMAGER", "NOROLE" }
+            local roleLabels = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS", NOROLE = "Other" }
+            for _, r in ipairs(roleOrder) do
+                if byRole[r] and #byRole[r] > 0 then
+                    local line = roleLabels[r] .. ": " .. table.concat(byRole[r], ", ")
+                    GameTooltip:AddLine(line, 0.7, 0.7, 0.7)
+                end
+            end
+        elseif d.roleCounts then
+            -- Fallback: aggregate counts
             GameTooltip:AddLine(" ")
             local t = d.roleCounts.TANK or 0
             local h = d.roleCounts.HEALER or 0
@@ -569,9 +589,15 @@ UpdateListings = function()
         local listing = listings[index]
 
         if listing then
-            -- Leader name (no class color available without member info)
+            -- Leader name (class-colored if available)
             row.nameText:SetText(listing.leaderName or "?")
-            row.nameText:SetTextColor(0.6, 0.8, 1.0)
+            local fe = GetFilterEngine()
+            local cc = fe and listing.leaderClass and fe.CLASS_COLORS[listing.leaderClass]
+            if cc then
+                row.nameText:SetTextColor(cc.r, cc.g, cc.b)
+            else
+                row.nameText:SetTextColor(0.6, 0.8, 1.0)
+            end
 
             -- Dungeon (truncated)
             local dungeon = listing.dungeon or ""
