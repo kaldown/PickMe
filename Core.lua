@@ -13,15 +13,36 @@ local LDBIcon = LibStub("LibDBIcon-1.0")
 --------------------------------------------------------------
 
 local DEFAULTS = {
-    profile = {
-        enabled = false,
-        paused = false,
-        template = "Hey {leader}, {level} {class} {role} LFG {dungeon}!",
+    modes = {
+        groups = {
+            template = "Hey {leader}, {level} {class} {role} LFG {dungeon}!",
+            filters = {
+                minLevel = 0,
+                roles = {},           -- empty = show all; {"TANK","HEALER","DPS"}
+                excludeClasses = {},  -- singles only; ignored for groups
+            },
+        },
+        singles = {
+            template = "Hey {leader}, {level} {class} looking for {dungeon}?",
+            filters = {
+                minLevel = 0,
+                roles = {},
+                excludeClasses = {},
+            },
+        },
+    },
+    settings = {
+        cooldownHours = 4,
         whisperDelay = 3,
-        targetMode = "groups",
     },
     history = {},
     minimap = { hide = false },
+    -- Hidden auto-send state (no UI, preserved for dev use)
+    profile = {
+        enabled = false,
+        paused = false,
+        targetMode = "groups",  -- preserved for auto-send
+    },
 }
 
 --------------------------------------------------------------
@@ -34,24 +55,51 @@ PickMe.paused = false
 -- SavedVariables init
 --------------------------------------------------------------
 
-local function InitializeDB()
-    PickMeDB = PickMeDB or {}
-    for section, defaults in pairs(DEFAULTS) do
-        if type(defaults) == "table" then
-            PickMeDB[section] = PickMeDB[section] or {}
-            for k, v in pairs(defaults) do
-                if PickMeDB[section][k] == nil then
-                    PickMeDB[section][k] = v
-                end
+local function DeepMergeDefaults(target, defaults)
+    for k, v in pairs(defaults) do
+        if type(v) == "table" then
+            if type(target[k]) ~= "table" then
+                target[k] = {}
             end
+            DeepMergeDefaults(target[k], v)
+        elseif target[k] == nil then
+            target[k] = v
         end
     end
+end
 
-    -- Migrate old whispered table to history format
+local function InitializeDB()
+    PickMeDB = PickMeDB or {}
+
+    -- Migration: old profile-based schema -> new modes/settings schema
+    if PickMeDB.profile ~= nil and PickMeDB.modes == nil then
+        local old = PickMeDB.profile
+        PickMeDB.modes = {
+            groups = {
+                template = old.template or DEFAULTS.modes.groups.template,
+                filters = { minLevel = 0, roles = {}, excludeClasses = {} },
+            },
+            singles = {
+                template = old.template or DEFAULTS.modes.singles.template,
+                filters = { minLevel = 0, roles = {}, excludeClasses = {} },
+            },
+        }
+        PickMeDB.settings = {
+            cooldownHours = 4,
+            whisperDelay = old.whisperDelay or 3,
+        }
+        -- Preserve auto-send state including targetMode
+        PickMeDB.profile = {
+            enabled = old.enabled or false,
+            paused = old.paused or false,
+            targetMode = old.targetMode or "groups",
+        }
+    end
+
+    -- Migration: old whispered table -> history array
     if PickMeDB.whispered then
         PickMeDB.history = PickMeDB.history or {}
         for name, ts in pairs(PickMeDB.whispered) do
-            -- Check if already migrated
             local found = false
             for _, entry in ipairs(PickMeDB.history) do
                 if entry.name == name then found = true; break end
@@ -62,6 +110,8 @@ local function InitializeDB()
         end
         PickMeDB.whispered = nil
     end
+
+    DeepMergeDefaults(PickMeDB, DEFAULTS)
 end
 
 --------------------------------------------------------------
@@ -73,14 +123,10 @@ function PickMe:Print(msg)
 end
 
 function PickMe:Status()
-    local db = PickMeDB.profile
-    local status = db.enabled and (PickMe.paused and "|cFFFFFF00PAUSED|r" or "|cFF00FF00ON|r") or "|cFFFF0000OFF|r"
+    local settings = PickMeDB.settings
     local whispered = PickMe.GetHistoryCount and PickMe:GetHistoryCount() or 0
-    local queued = PickMe.GetQueueCount and PickMe:GetQueueCount() or 0
-    self:Print("Status: " .. status)
-    self:Print("Whispered: " .. whispered .. " | Queued: " .. queued)
-    self:Print("Template: " .. db.template)
-    self:Print("Target: " .. db.targetMode .. " | Delay: " .. db.whisperDelay .. "s")
+    self:Print("Whispered: " .. whispered)
+    self:Print("Cooldown: " .. settings.cooldownHours .. "h | Delay: " .. settings.whisperDelay .. "s")
 end
 
 --------------------------------------------------------------
