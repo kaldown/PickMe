@@ -426,12 +426,58 @@ local function CreateListingRow(index)
     row.dungeonText:SetJustifyH("LEFT")
     row.dungeonText:SetTextColor(0.9, 0.9, 0.9)
 
-    -- Role counts
-    row.compText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    row.compText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
-    row.compText:SetWidth(80)
-    row.compText:SetJustifyH("LEFT")
-    row.compText:SetTextColor(0.7, 0.7, 0.7)
+    -- Role icons (pre-created pool of MAX_ROLE_ICONS textures)
+    row.roleIcons = {}
+    for ri = 1, MAX_ROLE_ICONS do
+        local icon = row:CreateTexture(nil, "OVERLAY")
+        icon:SetSize(ROLE_ICON_SIZE, ROLE_ICON_SIZE)
+        if ri == 1 then
+            icon:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
+        else
+            icon:SetPoint("LEFT", row.roleIcons[ri - 1], "RIGHT", 1, 0)
+        end
+        icon:SetTexture(ROLE_ICON_TEXTURE)
+        icon:Hide()
+        row.roleIcons[ri] = icon
+    end
+
+    -- NOROLE fallback text (shown only if a member has no role)
+    row.noroleText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.noroleText:SetText("?")
+    row.noroleText:SetTextColor(0.5, 0.5, 0.5)
+    row.noroleText:Hide()
+
+    -- Fallback member count text (when no role data available)
+    row.memberCountText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    row.memberCountText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
+    row.memberCountText:SetWidth(80)
+    row.memberCountText:SetJustifyH("LEFT")
+    row.memberCountText:SetTextColor(0.7, 0.7, 0.7)
+    row.memberCountText:Hide()
+
+    -- Note/message badge
+    row.noteIcon = row:CreateTexture(nil, "OVERLAY")
+    row.noteIcon:SetSize(NOTE_ICON_SIZE, NOTE_ICON_SIZE)
+    row.noteIcon:SetTexture(NOTE_ICON_TEXTURE)
+    row.noteIcon:SetPoint("RIGHT", row.sendBtn, "LEFT", -4, 0)
+    row.noteIcon:Hide()
+
+    -- Note badge tooltip (separate mouse-enabled frame overlaying the icon)
+    row.noteBadge = CreateFrame("Frame", nil, row)
+    row.noteBadge:SetSize(NOTE_ICON_SIZE + 4, NOTE_ICON_SIZE + 4)
+    row.noteBadge:SetPoint("CENTER", row.noteIcon, "CENTER")
+    row.noteBadge:EnableMouse(true)
+    row.noteBadge:SetScript("OnEnter", function(self)
+        if self.description and self.description ~= "" then
+            GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
+            GameTooltip:AddLine(self.description, 1, 1, 1, true)
+            GameTooltip:Show()
+        end
+    end)
+    row.noteBadge:SetScript("OnLeave", function()
+        GameTooltip:Hide()
+    end)
+    row.noteBadge:Hide()
 
     -- Send button
     row.sendBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
