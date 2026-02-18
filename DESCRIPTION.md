@@ -10,6 +10,7 @@ Other addons:
 - [CraftLib](https://www.curseforge.com/wow/addons/craftlib) - Recipe database
 - [Silencer](https://www.curseforge.com/wow/addons/silencer-whispers) - Whisper gatekeeper
 - [VendorSniper](https://www.curseforge.com/wow/addons/vendorsniper) - Vendor restock sniper
+- [EyesOnMe](https://www.curseforge.com/wow/addons/eyesonme) - PvP targeting awareness
 
 ---
 
