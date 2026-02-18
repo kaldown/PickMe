@@ -11,13 +11,13 @@ local ROW_HEIGHT = 26
 local VISIBLE_ROWS = 9
 local ACCENT = { r = 0, g = 0.8, b = 0.4 }
 
--- Role icon texture (horizontal strip: tank, healer, dps, leader)
+-- Role icon texture (64x64 grid: leader/healer top, tank/dps bottom)
 local ROLE_ICON_TEXTURE = "Interface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES"
 local ROLE_ICON_SIZE = 14
 local ROLE_ICON_COORDS = {
-    TANK    = { 0,    0.25, 0, 1 },
-    HEALER  = { 0.25, 0.5,  0, 1 },
-    DAMAGER = { 0.5,  0.75, 0, 1 },
+    TANK    = { 0,       19/64, 22/64, 41/64 },
+    HEALER  = { 20/64,   39/64, 1/64,  20/64 },
+    DAMAGER = { 20/64,   39/64, 22/64, 41/64 },
 }
 local MAX_ROLE_ICONS = 5
 
@@ -536,10 +536,10 @@ local function CreateListingRow(index)
                 local coords = ROLE_ICON_COORDS[m.role]
                 if coords then
                     roleIcon = string.format(
-                        "|T%s:0:0:0:0:64:16:%d:%d:%d:%d|t ",
+                        "|T%s:0:0:0:0:64:64:%d:%d:%d:%d|t ",
                         ROLE_ICON_TEXTURE,
                         coords[1] * 64, coords[2] * 64,
-                        coords[3] * 16, coords[4] * 16
+                        coords[3] * 64, coords[4] * 64
                     )
                 end
 
