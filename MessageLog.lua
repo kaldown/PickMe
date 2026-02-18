@@ -23,6 +23,7 @@ local MAX_ROLE_ICONS = 5
 
 local FE = nil
 local activeMode = "groups"
+local isDirty = false
 
 --------------------------------------------------------------
 -- Helpers
@@ -293,10 +294,7 @@ classLabel:SetPoint("TOPLEFT", 16, classY)
 classLabel:SetText("Exclude:")
 classLabel:SetTextColor(0.6, 0.6, 0.6)
 
-local CLASS_LIST = {
-    "WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST",
-    "SHAMAN", "MAGE", "WARLOCK", "DRUID",
-}
+-- Class data from FilterEngine (avoid duplication)
 local CLASS_SHORT = {
     WARRIOR = "War", PALADIN = "Pal", HUNTER = "Hun",
     ROGUE = "Rog", PRIEST = "Pri", SHAMAN = "Sha",
@@ -306,7 +304,8 @@ local CLASS_SHORT = {
 local classXOffset = 70
 local classSpacing = 82
 
-for i, class in ipairs(CLASS_LIST) do
+local fe = GetFilterEngine()
+for i, class in ipairs(fe.CLASS_LIST) do
     local cb = CreateFrame("CheckButton", "PickMeExcl" .. class, frame, "UICheckButtonTemplate")
     cb:SetSize(18, 18)
 
@@ -320,16 +319,8 @@ for i, class in ipairs(CLASS_LIST) do
     label:SetPoint("LEFT", cb, "RIGHT", -2, 0)
     label:SetText(CLASS_SHORT[class])
 
-    -- Color by class
-    local CLASS_COLORS_INLINE = {
-        WARRIOR = {0.78, 0.61, 0.43}, PALADIN = {0.96, 0.55, 0.73},
-        HUNTER = {0.67, 0.83, 0.45}, ROGUE = {1.00, 0.96, 0.41},
-        PRIEST = {1.00, 1.00, 1.00}, SHAMAN = {0.00, 0.44, 0.87},
-        MAGE = {0.25, 0.78, 0.92}, WARLOCK = {0.53, 0.53, 0.93},
-        DRUID = {1.00, 0.49, 0.04},
-    }
-    local cc = CLASS_COLORS_INLINE[class]
-    if cc then label:SetTextColor(cc[1], cc[2], cc[3]) end
+    local cc = fe.CLASS_COLORS[class]
+    if cc then label:SetTextColor(cc.r, cc.g, cc.b) end
 
     cb:SetScript("OnClick", function(self)
         local filters = PickMeDB.modes[activeMode].filters
@@ -930,7 +921,8 @@ local function LoadModeConfig()
     end
 
     local exclClasses = modeConfig.filters.excludeClasses or {}
-    for _, class in ipairs(CLASS_LIST) do
+    local fe2 = GetFilterEngine()
+    for _, class in ipairs(fe2.CLASS_LIST) do
         local isExcl = false
         for _, c in ipairs(exclClasses) do
             if c == class then isExcl = true; break end
@@ -961,8 +953,7 @@ frame:SetScript("OnShow", function()
     LoadModeConfig()
     UpdateModeBtns()
     UpdateClassFilterVisibility()
-    UpdateListings()
-    UpdateFooter()
+    isDirty = true
 end)
 
 frame:SetScript("OnHide", function()
@@ -973,13 +964,11 @@ frame:SetScript("OnHide", function()
 end)
 
 frame:SetScript("OnUpdate", function(self, elapsed)
-    self.elapsed = (self.elapsed or 0) + elapsed
-    if self.elapsed >= 1 then
-        self.elapsed = 0
-        if self:IsShown() then
-            UpdateListings()
-            UpdateFooter()
-        end
+    if not self:IsShown() then return end
+    if isDirty then
+        isDirty = false
+        UpdateListings()
+        UpdateFooter()
     end
 end)
 
@@ -988,10 +977,7 @@ end)
 --------------------------------------------------------------
 
 function PickMe:OnScanResultsUpdated()
-    if frame:IsShown() then
-        UpdateListings()
-        UpdateFooter()
-    end
+    isDirty = true
 end
 
 --------------------------------------------------------------

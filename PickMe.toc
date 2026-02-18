@@ -19,4 +19,3 @@ WhisperQueue.lua
 FilterEngine.lua
 Scanner.lua
 MessageLog.lua
-UI.lua
