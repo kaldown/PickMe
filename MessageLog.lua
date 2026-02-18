@@ -111,39 +111,39 @@ end
 -- Global settings (right side of mode row)
 --------------------------------------------------------------
 
-local cooldownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-cooldownLabel:SetPoint("TOPRIGHT", -110, modeY - 4)
-cooldownLabel:SetText("Cooldown:")
-cooldownLabel:SetTextColor(0.7, 0.7, 0.7)
-
-local cooldownBox = CreateFrame("EditBox", "PickMeCooldownBox", frame, "InputBoxTemplate")
-cooldownBox:SetSize(24, 18)
-cooldownBox:SetPoint("LEFT", cooldownLabel, "RIGHT", 4, 0)
-cooldownBox:SetAutoFocus(false)
-cooldownBox:SetNumeric(true)
-cooldownBox:SetMaxLetters(2)
-
-local cooldownUnit = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-cooldownUnit:SetPoint("LEFT", cooldownBox, "RIGHT", 2, 0)
-cooldownUnit:SetText("h")
-cooldownUnit:SetTextColor(0.7, 0.7, 0.7)
-
-local delayLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-delayLabel:SetPoint("LEFT", cooldownUnit, "RIGHT", 10, 0)
-delayLabel:SetText("Delay:")
-delayLabel:SetTextColor(0.7, 0.7, 0.7)
+local delayUnit = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+delayUnit:SetPoint("TOPRIGHT", -14, modeY - 4)
+delayUnit:SetText("s")
+delayUnit:SetTextColor(0.7, 0.7, 0.7)
 
 local delayBox = CreateFrame("EditBox", "PickMeDelayBox", frame, "InputBoxTemplate")
 delayBox:SetSize(24, 18)
-delayBox:SetPoint("LEFT", delayLabel, "RIGHT", 4, 0)
+delayBox:SetPoint("RIGHT", delayUnit, "LEFT", -2, 0)
 delayBox:SetAutoFocus(false)
 delayBox:SetNumeric(true)
 delayBox:SetMaxLetters(2)
 
-local delayUnit = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-delayUnit:SetPoint("LEFT", delayBox, "RIGHT", 2, 0)
-delayUnit:SetText("s")
-delayUnit:SetTextColor(0.7, 0.7, 0.7)
+local delayLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+delayLabel:SetPoint("RIGHT", delayBox, "LEFT", -4, 0)
+delayLabel:SetText("Delay:")
+delayLabel:SetTextColor(0.7, 0.7, 0.7)
+
+local cooldownUnit = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+cooldownUnit:SetPoint("RIGHT", delayLabel, "LEFT", -10, 0)
+cooldownUnit:SetText("h")
+cooldownUnit:SetTextColor(0.7, 0.7, 0.7)
+
+local cooldownBox = CreateFrame("EditBox", "PickMeCooldownBox", frame, "InputBoxTemplate")
+cooldownBox:SetSize(24, 18)
+cooldownBox:SetPoint("RIGHT", cooldownUnit, "LEFT", -2, 0)
+cooldownBox:SetAutoFocus(false)
+cooldownBox:SetNumeric(true)
+cooldownBox:SetMaxLetters(2)
+
+local cooldownLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+cooldownLabel:SetPoint("RIGHT", cooldownBox, "LEFT", -4, 0)
+cooldownLabel:SetText("Cooldown:")
+cooldownLabel:SetTextColor(0.7, 0.7, 0.7)
 
 local function SaveCooldown(self)
     local val = tonumber(self:GetText()) or 4
@@ -384,9 +384,9 @@ local classCbRow2Y = classCbY - 20
 
 -- Class data from FilterEngine (avoid duplication)
 local CLASS_SHORT = {
-    WARRIOR = "War", PALADIN = "Pal", HUNTER = "Hun",
-    ROGUE = "Rog", PRIEST = "Pri", SHAMAN = "Sha",
-    MAGE = "Mag", WARLOCK = "Wlk", DRUID = "Dru",
+    WARRIOR = "Warrior", PALADIN = "Paladin", HUNTER = "Hunter",
+    ROGUE = "Rogue", PRIEST = "Priest", SHAMAN = "Shaman",
+    MAGE = "Mage", WARLOCK = "Warlock", DRUID = "Druid",
 }
 
 local classXOffset = 16
