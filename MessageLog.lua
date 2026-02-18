@@ -523,9 +523,8 @@ local function CreateListingRow(index)
     row.nameText:SetWidth(100)
     row.nameText:SetJustifyH("LEFT")
 
-    -- Dungeon
+    -- Dungeon (anchored to noteBadge column below for stable alignment)
     row.dungeonText = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-    row.dungeonText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
     row.dungeonText:SetWidth(130)
     row.dungeonText:SetJustifyH("LEFT")
     row.dungeonText:SetTextColor(0.9, 0.9, 0.9)
@@ -565,17 +564,21 @@ local function CreateListingRow(index)
     row.sendBtn:SetPoint("RIGHT", -2, 0)
     row.sendBtn:SetText("Send")
 
-    -- Note/message badge (envelope icon next to leader name)
+    -- Note/message badge (fixed-width column after leader name)
     row.noteBadge = CreateFrame("Frame", nil, row)
     row.noteBadge:SetSize(14, ROW_HEIGHT)
     row.noteBadge:SetPoint("LEFT", row.nameText, "RIGHT", 0, 0)
+
+    -- Dungeon always anchors after the badge column (keeps columns aligned)
+    row.dungeonText:ClearAllPoints()
+    row.dungeonText:SetPoint("LEFT", row.noteBadge, "RIGHT", 0, 0)
     row.noteBadge:EnableMouse(true)
     row.noteBadge.icon = row.noteBadge:CreateTexture(nil, "OVERLAY")
     row.noteBadge.icon:SetSize(12, 12)
     row.noteBadge.icon:SetPoint("LEFT", 1, 0)
     row.noteBadge.icon:SetTexture("Interface\\Icons\\INV_Letter_15")
     row.noteBadge:SetScript("OnEnter", function(self)
-        if self.description and self.description ~= "" then
+        if self.icon:IsShown() and self.description and self.description ~= "" then
             GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
             GameTooltip:AddLine(self.description, 1, 1, 1, true)
             GameTooltip:Show()
@@ -584,7 +587,7 @@ local function CreateListingRow(index)
     row.noteBadge:SetScript("OnLeave", function()
         GameTooltip:Hide()
     end)
-    row.noteBadge:Hide()
+    row.noteBadge.icon:Hide()
 
     -- Sent status text (right-clickable to clear)
     row.sentText = CreateFrame("Button", nil, row)
@@ -792,17 +795,13 @@ local function CreateListingRow(index)
         -- Role icons
         self:UpdateRoleIcons(listing)
 
-        -- Note badge + anchor chain
+        -- Note badge (show/hide icon; column width is fixed so alignment is stable)
         if listing.description and listing.description ~= "" then
             self.noteBadge.description = listing.description
-            self.noteBadge:Show()
-            self.dungeonText:ClearAllPoints()
-            self.dungeonText:SetPoint("LEFT", self.noteBadge, "RIGHT", 0, 0)
+            self.noteBadge.icon:Show()
         else
             self.noteBadge.description = nil
-            self.noteBadge:Hide()
-            self.dungeonText:ClearAllPoints()
-            self.dungeonText:SetPoint("LEFT", self.nameText, "RIGHT", 4, 0)
+            self.noteBadge.icon:Hide()
         end
 
         -- Send button / Sent status
@@ -854,14 +853,12 @@ local function CreateListingRow(index)
         self.nameText:SetText("")
         self.nameText:SetTextColor(0.6, 0.8, 1.0)
         self.dungeonText:SetText("")
-        self.dungeonText:ClearAllPoints()
-        self.dungeonText:SetPoint("LEFT", self.nameText, "RIGHT", 4, 0)
         for ri = 1, MAX_ROLE_ICONS do
             self.roleIcons[ri]:Hide()
         end
         self.noroleText:Hide()
         self.memberCountText:Hide()
-        self.noteBadge:Hide()
+        self.noteBadge.icon:Hide()
         self.noteBadge.description = nil
         self.sendBtn:Hide()
         self.sentText:Hide()
