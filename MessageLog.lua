@@ -1122,7 +1122,7 @@ end)
 
 local function HookLFGFrame()
     -- Try known LFG frame names (varies by client version)
-    local lfgFrameNames = { "LFGListFrame", "LFGListingFrame", "PVEFrame" }
+    local lfgFrameNames = { "LFGParentFrame", "LFGBrowseFrame", "PVEFrame" }
     for _, name in ipairs(lfgFrameNames) do
         local lfgFrame = _G[name]
         if lfgFrame and lfgFrame.HookScript then
