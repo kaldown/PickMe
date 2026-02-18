@@ -196,8 +196,7 @@ local function ScanLFGResults()
                     roleCounts = roleCounts,
                     seekingRoles = seekingRoles,
                     members = members,   -- per-member {role, class} if available
-                    description = info.name or "",  -- listing title/description
-                    comment = info.comment or "",    -- listing comment if available
+                    description = info.comment or "",  -- user-entered listing text
                 }
 
                 if numMembers >= 2 then
