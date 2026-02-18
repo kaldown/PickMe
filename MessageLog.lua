@@ -1116,6 +1116,39 @@ frame:SetScript("OnHide", function()
     minLevelBox:ClearFocus()
 end)
 
+--------------------------------------------------------------
+-- LFG Panel sync: open/close with Blizzard LFG frame
+--------------------------------------------------------------
+
+local function HookLFGFrame()
+    -- Try known LFG frame names (varies by client version)
+    local lfgFrameNames = { "LFGListFrame", "LFGListingFrame", "PVEFrame" }
+    for _, name in ipairs(lfgFrameNames) do
+        local lfgFrame = _G[name]
+        if lfgFrame and lfgFrame.HookScript then
+            lfgFrame:HookScript("OnShow", function()
+                if not frame:IsShown() then
+                    frame:Show()
+                end
+            end)
+            lfgFrame:HookScript("OnHide", function()
+                if frame:IsShown() then
+                    frame:Hide()
+                end
+            end)
+            return true
+        end
+    end
+    return false
+end
+
+-- Delay hook: LFG frames may not exist at load time
+C_Timer.After(2, function()
+    if not HookLFGFrame() then
+        C_Timer.After(5, HookLFGFrame)
+    end
+end)
+
 frame:SetScript("OnUpdate", function(self, elapsed)
     if not self:IsShown() then return end
     if isDirty then
