@@ -586,6 +586,180 @@ local function CreateListingRow(index)
         GameTooltip:Hide()
     end)
 
+    -- Row API: role icon population
+    function row:UpdateRoleIcons(listing)
+        for ri = 1, MAX_ROLE_ICONS do
+            self.roleIcons[ri]:Hide()
+        end
+        self.noroleText:Hide()
+        self.memberCountText:Hide()
+
+        if listing.members and #listing.members > 0 then
+            local sorted = {}
+            for _, m in ipairs(listing.members) do
+                sorted[#sorted + 1] = m
+            end
+            local roleOrder = { TANK = 1, HEALER = 2, DAMAGER = 3 }
+            table.sort(sorted, function(a, b)
+                return (roleOrder[a.role] or 4) < (roleOrder[b.role] or 4)
+            end)
+
+            local iconIndex = 0
+            for _, m in ipairs(sorted) do
+                local coords = ROLE_ICON_COORDS[m.role]
+                if coords then
+                    iconIndex = iconIndex + 1
+                    if iconIndex <= MAX_ROLE_ICONS then
+                        local icon = self.roleIcons[iconIndex]
+                        icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                        icon:Show()
+                    end
+                else
+                    self.noroleText:ClearAllPoints()
+                    if iconIndex > 0 then
+                        self.noroleText:SetPoint("LEFT", self.roleIcons[iconIndex], "RIGHT", 2, 0)
+                    else
+                        self.noroleText:SetPoint("LEFT", self.dungeonText, "RIGHT", 4, 0)
+                    end
+                    self.noroleText:Show()
+                end
+            end
+        elseif listing.roleCounts then
+            local iconIndex = 0
+            local roleSeq = { "TANK", "HEALER", "DAMAGER" }
+            for _, role in ipairs(roleSeq) do
+                local count = listing.roleCounts[role] or 0
+                local coords = ROLE_ICON_COORDS[role]
+                if coords then
+                    for _ = 1, count do
+                        iconIndex = iconIndex + 1
+                        if iconIndex <= MAX_ROLE_ICONS then
+                            local icon = self.roleIcons[iconIndex]
+                            icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
+                            icon:Show()
+                        end
+                    end
+                end
+            end
+            local noroleCount = listing.roleCounts.NOROLE or 0
+            if noroleCount > 0 then
+                self.noroleText:ClearAllPoints()
+                if iconIndex > 0 then
+                    self.noroleText:SetPoint("LEFT", self.roleIcons[iconIndex], "RIGHT", 2, 0)
+                else
+                    self.noroleText:SetPoint("LEFT", self.dungeonText, "RIGHT", 4, 0)
+                end
+                self.noroleText:Show()
+            end
+            if iconIndex == 0 and noroleCount == 0 then
+                self.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
+                self.memberCountText:Show()
+            end
+        else
+            self.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
+            self.memberCountText:Show()
+        end
+    end
+
+    -- Row API: populate all elements from listing data
+    function row:Update(listing, state)
+        local fe = GetFilterEngine()
+
+        -- Leader name (class-colored)
+        self.nameText:SetText(listing.leaderName or "?")
+        local cc = fe and listing.leaderClass and fe.CLASS_COLORS[listing.leaderClass]
+        if cc then
+            self.nameText:SetTextColor(cc.r, cc.g, cc.b)
+        else
+            self.nameText:SetTextColor(0.6, 0.8, 1.0)
+        end
+
+        -- Dungeon (truncated)
+        local dungeon = listing.dungeon or ""
+        if #dungeon > 20 then
+            dungeon = dungeon:sub(1, 17) .. "..."
+        end
+        self.dungeonText:SetText(dungeon)
+
+        -- Role icons
+        self:UpdateRoleIcons(listing)
+
+        -- Note badge + anchor chain
+        if listing.description and listing.description ~= "" then
+            self.noteBadge.description = listing.description
+            self.noteBadge:Show()
+            self.dungeonText:ClearAllPoints()
+            self.dungeonText:SetPoint("LEFT", self.noteBadge, "RIGHT", 0, 0)
+        else
+            self.noteBadge.description = nil
+            self.noteBadge:Hide()
+            self.dungeonText:ClearAllPoints()
+            self.dungeonText:SetPoint("LEFT", self.nameText, "RIGHT", 4, 0)
+        end
+
+        -- Send button / Sent status
+        if state.historyEntry then
+            self.sendBtn:Hide()
+            self.sentText.label:SetText("|cFF00CC66Sent " .. FormatRelativeTime(state.historyEntry.time) .. "|r")
+            self.sentText:Show()
+            self.sentText:SetScript("OnClick", function(_, button)
+                if button == "RightButton" and state.onClearHistory then
+                    state.onClearHistory(listing.leaderName)
+                end
+            end)
+            self.sentText:RegisterForClicks("RightButtonUp")
+            self.sentText:SetScript("OnEnter", function(btn)
+                GameTooltip:SetOwner(btn, "ANCHOR_CURSOR")
+                GameTooltip:AddLine("Right-click to clear and re-enable", 0.7, 0.7, 0.7)
+                GameTooltip:Show()
+            end)
+            self.sentText:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+            end)
+        else
+            self.sentText:Hide()
+            self.sendBtn:Show()
+            if state.throttled then
+                self.sendBtn:Disable()
+            else
+                self.sendBtn:Enable()
+            end
+            self.sendBtn:SetScript("OnClick", function()
+                if state.onSend then
+                    local success = state.onSend(listing.leaderName, listing.dungeon)
+                    if success then
+                        self.flash:Show()
+                        C_Timer.After(0.3, function()
+                            if self.flash then self.flash:Hide() end
+                        end)
+                    end
+                end
+            end)
+        end
+
+        -- Tooltip data
+        self.tooltipData = listing
+    end
+
+    -- Row API: hide all elements for empty/offscreen rows
+    function row:Clear()
+        self.nameText:SetText("")
+        self.nameText:SetTextColor(0.6, 0.8, 1.0)
+        self.dungeonText:SetText("")
+        self.dungeonText:ClearAllPoints()
+        self.dungeonText:SetPoint("LEFT", self.nameText, "RIGHT", 4, 0)
+        for ri = 1, MAX_ROLE_ICONS do
+            self.roleIcons[ri]:Hide()
+        end
+        self.noroleText:Hide()
+        self.memberCountText:Hide()
+        self.noteBadge:Hide()
+        self.noteBadge.description = nil
+        self.sendBtn:Hide()
+        self.sentText:Hide()
+        self.tooltipData = nil
+    end
+
     return row
 end
 
@@ -620,94 +794,6 @@ local function GetFilteredListings()
 end
 
 --------------------------------------------------------------
--- Role icon helper
---------------------------------------------------------------
-
---- Populate role icons on a row from member data
---- @param row table the listing row frame
---- @param listing table the listing data
-local function SetRowRoleIcons(row, listing)
-    -- Hide all icons first
-    for ri = 1, MAX_ROLE_ICONS do
-        row.roleIcons[ri]:Hide()
-    end
-    row.noroleText:Hide()
-    row.memberCountText:Hide()
-
-    -- If we have per-member data, show individual role icons
-    if listing.members and #listing.members > 0 then
-        -- Sort: tanks first, then healers, then DPS, then norole
-        local sorted = {}
-        for _, m in ipairs(listing.members) do
-            sorted[#sorted + 1] = m
-        end
-        local roleOrder = { TANK = 1, HEALER = 2, DAMAGER = 3 }
-        table.sort(sorted, function(a, b)
-            return (roleOrder[a.role] or 4) < (roleOrder[b.role] or 4)
-        end)
-
-        local iconIndex = 0
-        for _, m in ipairs(sorted) do
-            local coords = ROLE_ICON_COORDS[m.role]
-            if coords then
-                iconIndex = iconIndex + 1
-                if iconIndex <= MAX_ROLE_ICONS then
-                    local icon = row.roleIcons[iconIndex]
-                    icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-                    icon:Show()
-                end
-            else
-                -- NOROLE: show "?" after the last icon
-                row.noroleText:ClearAllPoints()
-                if iconIndex > 0 then
-                    row.noroleText:SetPoint("LEFT", row.roleIcons[iconIndex], "RIGHT", 2, 0)
-                else
-                    row.noroleText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
-                end
-                row.noroleText:Show()
-            end
-        end
-    elseif listing.roleCounts then
-        -- Fallback: show icons from aggregate counts
-        local iconIndex = 0
-        local roleSeq = { "TANK", "HEALER", "DAMAGER" }
-        for _, role in ipairs(roleSeq) do
-            local count = listing.roleCounts[role] or 0
-            local coords = ROLE_ICON_COORDS[role]
-            if coords then
-                for _ = 1, count do
-                    iconIndex = iconIndex + 1
-                    if iconIndex <= MAX_ROLE_ICONS then
-                        local icon = row.roleIcons[iconIndex]
-                        icon:SetTexCoord(coords[1], coords[2], coords[3], coords[4])
-                        icon:Show()
-                    end
-                end
-            end
-        end
-        -- NOROLE from counts
-        local noroleCount = listing.roleCounts.NOROLE or 0
-        if noroleCount > 0 then
-            row.noroleText:ClearAllPoints()
-            if iconIndex > 0 then
-                row.noroleText:SetPoint("LEFT", row.roleIcons[iconIndex], "RIGHT", 2, 0)
-            else
-                row.noroleText:SetPoint("LEFT", row.dungeonText, "RIGHT", 4, 0)
-            end
-            row.noroleText:Show()
-        end
-        if iconIndex == 0 and noroleCount == 0 then
-            row.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
-            row.memberCountText:Show()
-        end
-    else
-        -- No role data at all
-        row.memberCountText:SetText(listing.numMembers and (listing.numMembers .. " members") or "")
-        row.memberCountText:Show()
-    end
-end
-
---------------------------------------------------------------
 -- Update listing display
 --------------------------------------------------------------
 
@@ -717,6 +803,9 @@ local sessionWhispers = 0
 
 -- Forward declaration for mutual reference
 local UpdateListings
+
+-- Shared row action callbacks (defined once, reused by all rows)
+local rowCallbacks = {}
 
 UpdateListings = function()
     if not frame:IsShown() then return end
@@ -729,6 +818,7 @@ UpdateListings = function()
         emptyText:SetText("List yourself in LFG to start scanning")
         emptyText:Show()
         for i = 1, VISIBLE_ROWS do
+            rows[i]:Clear()
             rows[i]:Hide()
         end
         return
@@ -754,105 +844,40 @@ UpdateListings = function()
     end
 
     local throttled = PickMe:IsThrottled()
+    local rowState = {
+        throttled = throttled,
+        onSend = rowCallbacks.onSend,
+        onClearHistory = rowCallbacks.onClearHistory,
+    }
 
     for i = 1, VISIBLE_ROWS do
         local row = rows[i]
-        local index = offset + i
-        local listing = listings[index]
+        local listing = listings[offset + i]
 
         if listing then
-            -- Leader name (class-colored if available)
-            row.nameText:SetText(listing.leaderName or "?")
-            local fe = GetFilterEngine()
-            local cc = fe and listing.leaderClass and fe.CLASS_COLORS[listing.leaderClass]
-            if cc then
-                row.nameText:SetTextColor(cc.r, cc.g, cc.b)
-            else
-                row.nameText:SetTextColor(0.6, 0.8, 1.0)
-            end
-
-            -- Dungeon (truncated)
-            local dungeon = listing.dungeon or ""
-            if #dungeon > 20 then
-                dungeon = dungeon:sub(1, 17) .. "..."
-            end
-            row.dungeonText:SetText(dungeon)
-
-            -- Role icons
-            SetRowRoleIcons(row, listing)
-
-            -- Note badge + re-anchor dungeon text
-            if listing.description and listing.description ~= "" then
-                row.noteBadge.description = listing.description
-                row.noteBadge:Show()
-                row.dungeonText:ClearAllPoints()
-                row.dungeonText:SetPoint("LEFT", row.noteBadge, "RIGHT", 0, 0)
-            else
-                row.noteBadge.description = nil
-                row.noteBadge:Hide()
-                row.dungeonText:ClearAllPoints()
-                row.dungeonText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
-            end
-
-            -- Send button or Sent status
-            local historyEntry = PickMe:FindInHistory(listing.leaderName)
-            if historyEntry then
-                row.sendBtn:Hide()
-                row.sentText.label:SetText("|cFF00CC66Sent " .. FormatRelativeTime(historyEntry.time) .. "|r")
-                row.sentText:Show()
-                -- Right-click to clear history entry and re-enable
-                row.sentText:SetScript("OnClick", function(_, button)
-                    if button == "RightButton" then
-                        PickMe:ClearHistoryEntry(listing.leaderName)
-                        UpdateListings()
-                    end
-                end)
-                row.sentText:RegisterForClicks("RightButtonUp")
-                -- Tooltip hint on sent text
-                row.sentText:SetScript("OnEnter", function(self)
-                    GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
-                    GameTooltip:AddLine("Right-click to clear and re-enable", 0.7, 0.7, 0.7)
-                    GameTooltip:Show()
-                end)
-                row.sentText:SetScript("OnLeave", function()
-                    GameTooltip:Hide()
-                end)
-            else
-                row.sentText:Hide()
-                row.sendBtn:Show()
-                if throttled then
-                    row.sendBtn:Disable()
-                else
-                    row.sendBtn:Enable()
-                end
-                row.sendBtn:SetScript("OnClick", function()
-                    local success = PickMe:SendWhisper(
-                        listing.leaderName, listing.dungeon, activeMode
-                    )
-                    if success then
-                        row.flash:Show()
-                        C_Timer.After(0.3, function()
-                            if row.flash then row.flash:Hide() end
-                        end)
-                        sessionWhispers = sessionWhispers + 1
-                        UpdateListings()
-                    end
-                end)
-            end
-
-            row.tooltipData = listing
+            rowState.historyEntry = PickMe:FindInHistory(listing.leaderName)
+            row:Update(listing, rowState)
             row:Show()
         else
+            row:Clear()
             row:Hide()
-            -- Hide role icons and badge when row is hidden
-            for ri = 1, MAX_ROLE_ICONS do
-                row.roleIcons[ri]:Hide()
-            end
-            row.noroleText:Hide()
-            row.memberCountText:Hide()
-            row.noteBadge:Hide()
         end
     end
+end
+
+-- Wire up callbacks after UpdateListings is defined
+rowCallbacks.onSend = function(leaderName, dungeon)
+    local success = PickMe:SendWhisper(leaderName, dungeon, activeMode)
+    if success then
+        sessionWhispers = sessionWhispers + 1
+        UpdateListings()
+    end
+    return success
+end
+
+rowCallbacks.onClearHistory = function(leaderName)
+    PickMe:ClearHistoryEntry(leaderName)
+    UpdateListings()
 end
 
 scrollFrame:SetScript("OnVerticalScroll", function(sf, offset)
