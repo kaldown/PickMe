@@ -2,7 +2,7 @@
 ## Title: PickMe
 ## Notes: LFG listing browser with class and role filters
 ## Author: kaldown
-## Version: 0.1.0
+## Version: 0.2.0
 ## IconTexture: Interface\Icons\INV_Letter_15
 ## SavedVariables: PickMeDB
 ## X-License: MIT
