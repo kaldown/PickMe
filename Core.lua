@@ -18,8 +18,10 @@ local DEFAULTS = {
             template = "Hey {leader}, {level} {class} {role} LFG {dungeon}!",
             filters = {
                 minLevel = 0,
-                roles = {},           -- empty = show all; {"TANK","HEALER","DPS"}
-                excludeClasses = {},  -- singles only; ignored for groups
+                roles = {},
+                excludeClasses = {},
+                sortBy = "none",   -- "none", "name", "level"
+                sortDir = "asc",   -- "asc", "desc"
             },
         },
         singles = {
@@ -28,6 +30,8 @@ local DEFAULTS = {
                 minLevel = 0,
                 roles = {},
                 excludeClasses = {},
+                sortBy = "none",
+                sortDir = "asc",
             },
         },
     },

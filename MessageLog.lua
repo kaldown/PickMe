@@ -5,7 +5,7 @@ local _, PickMe = ...
 --------------------------------------------------------------
 
 local FRAME_WIDTH = 500
-local FRAME_HEIGHT = 460
+local FRAME_HEIGHT = 480
 local FOOTER_HEIGHT = 24
 local ROW_HEIGHT = 26
 local VISIBLE_ROWS = 9
@@ -284,8 +284,71 @@ for i, role in ipairs(roleNames) do
     roleCheckboxes[role] = cb
 end
 
--- Class exclude checkboxes (Singles mode only - 2 rows: 5+4)
-local classY = roleY - 22
+-- Sort controls
+local sortY = roleY - 22
+
+local sortLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+sortLabel:SetPoint("TOPLEFT", 16, sortY)
+sortLabel:SetText("Sort:")
+sortLabel:SetTextColor(0.6, 0.6, 0.6)
+
+local sortNoneBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+sortNoneBtn:SetSize(42, 18)
+sortNoneBtn:SetPoint("LEFT", sortLabel, "RIGHT", 6, 0)
+sortNoneBtn:SetText("None")
+
+local sortNameBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+sortNameBtn:SetSize(48, 18)
+sortNameBtn:SetPoint("LEFT", sortNoneBtn, "RIGHT", 2, 0)
+sortNameBtn:SetText("Name")
+
+local sortLevelBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+sortLevelBtn:SetSize(46, 18)
+sortLevelBtn:SetPoint("LEFT", sortNameBtn, "RIGHT", 2, 0)
+sortLevelBtn:SetText("Level")
+
+local sortDirBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+sortDirBtn:SetSize(36, 18)
+sortDirBtn:SetPoint("LEFT", sortLevelBtn, "RIGHT", 6, 0)
+sortDirBtn:SetText("Asc")
+
+local function UpdateSortButtons()
+    local filters = PickMeDB.modes[activeMode].filters
+    local sortBy = filters.sortBy or "none"
+    local sortDir = filters.sortDir or "asc"
+
+    sortNoneBtn:SetNormalFontObject(sortBy == "none" and "GameFontHighlight" or "GameFontNormalSmall")
+    sortNameBtn:SetNormalFontObject(sortBy == "name" and "GameFontHighlight" or "GameFontNormalSmall")
+    sortLevelBtn:SetNormalFontObject(sortBy == "level" and "GameFontHighlight" or "GameFontNormalSmall")
+    sortDirBtn:SetText(sortDir == "asc" and "Asc" or "Desc")
+
+    if sortBy == "none" then
+        sortDirBtn:Hide()
+    else
+        sortDirBtn:Show()
+    end
+end
+
+local function SetSort(sortBy)
+    local filters = PickMeDB.modes[activeMode].filters
+    filters.sortBy = sortBy
+    UpdateSortButtons()
+    isDirty = true
+end
+
+sortNoneBtn:SetScript("OnClick", function() SetSort("none"); PlaySound(808) end)
+sortNameBtn:SetScript("OnClick", function() SetSort("name"); PlaySound(808) end)
+sortLevelBtn:SetScript("OnClick", function() SetSort("level"); PlaySound(808) end)
+sortDirBtn:SetScript("OnClick", function()
+    local filters = PickMeDB.modes[activeMode].filters
+    filters.sortDir = (filters.sortDir == "asc") and "desc" or "asc"
+    UpdateSortButtons()
+    isDirty = true
+    PlaySound(808)
+end)
+
+-- Class filter checkboxes (2 rows: 5+4)
+local classY = sortY - 22
 local classCheckboxes = {}
 local classRow2Y = classY - 20
 
@@ -781,6 +844,33 @@ local function GetFilteredListings()
         end
     end
 
+    -- Sort if requested
+    local sortBy = filters and filters.sortBy or "none"
+    local sortDir = filters and filters.sortDir or "asc"
+
+    if sortBy == "name" then
+        table.sort(filtered, function(a, b)
+            local nameA = (a.leaderName or ""):lower()
+            local nameB = (b.leaderName or ""):lower()
+            if sortDir == "desc" then
+                return nameA > nameB
+            else
+                return nameA < nameB
+            end
+        end)
+    elseif sortBy == "level" then
+        table.sort(filtered, function(a, b)
+            local lvlA = a.leaderLevel or 0
+            local lvlB = b.leaderLevel or 0
+            if sortDir == "desc" then
+                return lvlA > lvlB
+            else
+                return lvlA < lvlB
+            end
+        end)
+    end
+    -- sortBy == "none": preserve stable insertion order from Scanner
+
     return filtered, #rawListings
 end
 
@@ -936,6 +1026,8 @@ local function LoadModeConfig()
         end
         classCheckboxes[class].cb:SetChecked(isExcl)
     end
+
+    UpdateSortButtons()
 end
 
 local function SwitchMode(mode)
