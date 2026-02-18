@@ -9,8 +9,11 @@ local isRegistered = false
 local playerName = nil
 
 local scanResults = {
-    groups = {},
+    groups = {},       -- ordered array of listing tables
     singles = {},
+    groupIndex = {},   -- leaderName -> index in groups array
+    singleIndex = {},  -- leaderName -> index in singles array
+    stale = {},        -- leaderName -> timestamp when marked stale
 }
 
 -- Forward declaration (defined in Event handling section)
@@ -136,6 +139,53 @@ local function GetMemberInfo(resultID, numMembers)
 end
 
 --------------------------------------------------------------
+-- Identity-based merge for stable ordering
+--------------------------------------------------------------
+
+local STALE_TIMEOUT = 5  -- seconds before stale entries are removed
+
+local function MergeResults(ordered, index, current, stale, now)
+    -- Pass 1: Update existing entries or mark stale
+    local i = 1
+    while i <= #ordered do
+        local entry = ordered[i]
+        local name = entry.leaderName
+        if current[name] then
+            -- Update in-place (preserve position)
+            for k, v in pairs(current[name]) do
+                entry[k] = v
+            end
+            entry._stale = nil
+            stale[name] = nil
+            current[name] = nil  -- consumed
+            i = i + 1
+        elseif stale[name] and (now - stale[name]) > STALE_TIMEOUT then
+            -- Remove expired stale entry
+            table.remove(ordered, i)
+            stale[name] = nil
+        elseif not entry._stale then
+            -- Mark as newly stale
+            entry._stale = true
+            stale[name] = now
+            i = i + 1
+        else
+            i = i + 1
+        end
+    end
+
+    -- Pass 2: Append new entries
+    for name, listing in pairs(current) do
+        ordered[#ordered + 1] = listing
+    end
+
+    -- Rebuild index
+    for k in pairs(index) do index[k] = nil end
+    for idx, entry in ipairs(ordered) do
+        index[entry.leaderName] = idx
+    end
+end
+
+--------------------------------------------------------------
 -- Scan LFG Browse results
 --------------------------------------------------------------
 
@@ -143,7 +193,6 @@ local function ScanLFGResults()
     if not C_LFGList or not C_LFGList.GetSearchResults then return end
     if not C_LFGList.GetSearchResultInfo then return end
 
-    -- Don't process results if player has no active listing
     if not PickMe:HasActiveListing() then
         ClearScanResults()
         return
@@ -155,10 +204,12 @@ local function ScanLFGResults()
     local ok, totalResults, results = pcall(C_LFGList.GetSearchResults)
     if not ok or not results then return end
 
-    scanResults.groups = {}
-    scanResults.singles = {}
-
     local FE = PickMe.FilterEngine
+    local now = time()
+
+    -- Build set of current listings from API
+    local currentGroups = {}  -- leaderName -> listing
+    local currentSingles = {}
 
     for _, resultID in ipairs(results) do
         local ok2, info = pcall(C_LFGList.GetSearchResultInfo, resultID)
@@ -169,19 +220,15 @@ local function ScanLFGResults()
                 local numMembers = info.numMembers or 1
                 local roleCounts = GetRoleCounts(resultID)
 
-                -- Infer what roles the group is seeking
                 local seekingRoles = {}
                 if FE and roleCounts then
                     seekingRoles = FE.InferSeekingRoles(roleCounts, numMembers)
                 end
 
-                -- Try to get per-member class/role data
                 local members = GetMemberInfo(resultID, numMembers)
                 local leaderClass = nil
                 local leaderLevel = 0
                 if members and #members > 0 then
-                    -- For singles, the only member is the leader
-                    -- For groups, member index 1 is commonly the leader
                     leaderClass = members[1].class
                     leaderLevel = members[1].level or 0
                 end
@@ -195,19 +242,22 @@ local function ScanLFGResults()
                     numMembers = numMembers,
                     roleCounts = roleCounts,
                     seekingRoles = seekingRoles,
-                    members = members,   -- per-member {role, class} if available
-                    description = info.comment or "",  -- user-entered listing text
+                    members = members,
+                    description = info.comment or "",
                 }
 
                 if numMembers >= 2 then
-                    scanResults.groups[#scanResults.groups + 1] = listing
+                    currentGroups[leader] = listing
                 else
-                    scanResults.singles[#scanResults.singles + 1] = listing
+                    currentSingles[leader] = listing
                 end
-
             end
         end
     end
+
+    -- Merge: update existing, mark stale, append new
+    MergeResults(scanResults.groups, scanResults.groupIndex, currentGroups, scanResults.stale, now)
+    MergeResults(scanResults.singles, scanResults.singleIndex, currentSingles, scanResults.stale, now)
 
     if PickMe.OnScanResultsUpdated then
         PickMe:OnScanResultsUpdated()
@@ -221,6 +271,9 @@ end
 ClearScanResults = function()
     scanResults.groups = {}
     scanResults.singles = {}
+    scanResults.groupIndex = {}
+    scanResults.singleIndex = {}
+    scanResults.stale = {}
     if PickMe.OnScanResultsUpdated then
         PickMe:OnScanResultsUpdated()
     end
@@ -270,6 +323,10 @@ end
 
 function PickMe:GetSingleResults()
     return scanResults.singles
+end
+
+function PickMe:IsListingStale(leaderName)
+    return scanResults.stale[leaderName] ~= nil
 end
 
 function PickMe:ManualScan()

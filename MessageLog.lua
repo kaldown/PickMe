@@ -849,6 +849,13 @@ UpdateListings = function()
             rowState.historyEntry = PickMe:FindInHistory(listing.leaderName)
             row:Update(listing, rowState)
             row:Show()
+            -- Grey out stale listings
+            if PickMe.IsListingStale and PickMe:IsListingStale(listing.leaderName) then
+                row:SetAlpha(0.4)
+                row.sendBtn:Disable()
+            else
+                row:SetAlpha(1.0)
+            end
         else
             row:Clear()
             row:Hide()
