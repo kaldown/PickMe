@@ -21,10 +21,6 @@ local ROLE_ICON_COORDS = {
 }
 local MAX_ROLE_ICONS = 5
 
--- Note/message badge texture
-local NOTE_ICON_TEXTURE = "Interface\\Buttons\\UI-GuildButton-PublicNote-Up"
-local NOTE_ICON_SIZE = 12
-
 local FE = nil
 local activeMode = "groups"
 
@@ -455,18 +451,21 @@ local function CreateListingRow(index)
     row.memberCountText:SetTextColor(0.7, 0.7, 0.7)
     row.memberCountText:Hide()
 
-    -- Note/message badge
-    row.noteIcon = row:CreateTexture(nil, "OVERLAY")
-    row.noteIcon:SetSize(NOTE_ICON_SIZE, NOTE_ICON_SIZE)
-    row.noteIcon:SetTexture(NOTE_ICON_TEXTURE)
-    row.noteIcon:SetPoint("RIGHT", row.sendBtn, "LEFT", -4, 0)
-    row.noteIcon:Hide()
+    -- Send button (created before note badge so it can be used as anchor)
+    row.sendBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
+    row.sendBtn:SetSize(50, 20)
+    row.sendBtn:SetPoint("RIGHT", -2, 0)
+    row.sendBtn:SetText("Send")
 
-    -- Note badge tooltip (separate mouse-enabled frame overlaying the icon)
+    -- Note/message badge (envelope icon next to leader name)
     row.noteBadge = CreateFrame("Frame", nil, row)
-    row.noteBadge:SetSize(NOTE_ICON_SIZE + 4, NOTE_ICON_SIZE + 4)
-    row.noteBadge:SetPoint("CENTER", row.noteIcon, "CENTER")
+    row.noteBadge:SetSize(14, ROW_HEIGHT)
+    row.noteBadge:SetPoint("LEFT", row.nameText, "RIGHT", 0, 0)
     row.noteBadge:EnableMouse(true)
+    row.noteBadge.icon = row.noteBadge:CreateTexture(nil, "OVERLAY")
+    row.noteBadge.icon:SetSize(12, 12)
+    row.noteBadge.icon:SetPoint("LEFT", 1, 0)
+    row.noteBadge.icon:SetTexture("Interface\\Icons\\INV_Letter_15")
     row.noteBadge:SetScript("OnEnter", function(self)
         if self.description and self.description ~= "" then
             GameTooltip:SetOwner(self, "ANCHOR_CURSOR")
@@ -478,12 +477,6 @@ local function CreateListingRow(index)
         GameTooltip:Hide()
     end)
     row.noteBadge:Hide()
-
-    -- Send button
-    row.sendBtn = CreateFrame("Button", nil, row, "UIPanelButtonTemplate")
-    row.sendBtn:SetSize(50, 20)
-    row.sendBtn:SetPoint("RIGHT", -2, 0)
-    row.sendBtn:SetText("Send")
 
     -- Sent status text (right-clickable to clear)
     row.sentText = CreateFrame("Button", nil, row)
@@ -788,15 +781,17 @@ UpdateListings = function()
             -- Role icons
             SetRowRoleIcons(row, listing)
 
-            -- Note badge
+            -- Note badge + re-anchor dungeon text
             if listing.description and listing.description ~= "" then
-                row.noteIcon:Show()
                 row.noteBadge.description = listing.description
                 row.noteBadge:Show()
+                row.dungeonText:ClearAllPoints()
+                row.dungeonText:SetPoint("LEFT", row.noteBadge, "RIGHT", 0, 0)
             else
-                row.noteIcon:Hide()
                 row.noteBadge.description = nil
                 row.noteBadge:Hide()
+                row.dungeonText:ClearAllPoints()
+                row.dungeonText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
             end
 
             -- Send button or Sent status
@@ -855,7 +850,6 @@ UpdateListings = function()
             end
             row.noroleText:Hide()
             row.memberCountText:Hide()
-            row.noteIcon:Hide()
             row.noteBadge:Hide()
         end
     end
