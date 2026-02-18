@@ -37,19 +37,20 @@ local DEFAULTS = {
     },
     history = {},
     minimap = { hide = false },
-    -- Hidden auto-send state (no UI, preserved for dev use)
+    --[[ QUEUE DISABLED - auto-send state
     profile = {
         enabled = false,
         paused = false,
-        targetMode = "groups",  -- preserved for auto-send
+        targetMode = "groups",
     },
+    --]]
 }
 
 --------------------------------------------------------------
 -- State
 --------------------------------------------------------------
 
-PickMe.paused = false
+-- PickMe.paused = false  -- QUEUE DISABLED
 
 --------------------------------------------------------------
 -- SavedVariables init
@@ -88,12 +89,13 @@ local function InitializeDB()
             cooldownHours = 4,
             whisperDelay = old.whisperDelay or 3,
         }
-        -- Preserve auto-send state including targetMode
+        --[[ QUEUE DISABLED - auto-send state migration
         PickMeDB.profile = {
             enabled = old.enabled or false,
             paused = old.paused or false,
             targetMode = old.targetMode or "groups",
         }
+        --]]
     end
 
     -- Migration: old whispered table -> history array
@@ -129,6 +131,7 @@ function PickMe:Status()
     self:Print("Cooldown: " .. settings.cooldownHours .. "h | Delay: " .. settings.whisperDelay .. "s")
 end
 
+--[[ QUEUE DISABLED - auto-send state machine
 --------------------------------------------------------------
 -- Enable / Disable / Pause
 --------------------------------------------------------------
@@ -168,6 +171,7 @@ end
 function PickMe:IsActive()
     return PickMeDB.profile.enabled and not PickMe.paused
 end
+--]]
 
 --------------------------------------------------------------
 -- Minimap button
@@ -214,7 +218,7 @@ eventFrame:RegisterEvent("PLAYER_LOGIN")
 eventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
         InitializeDB()
-        PickMe.paused = PickMeDB.profile.paused or false
+        -- PickMe.paused = PickMeDB.profile.paused or false  -- QUEUE DISABLED
         LDBIcon:Register("PickMe", dataObject, PickMeDB.minimap)
         PickMe:Print("v" .. VERSION .. " loaded. Type /pickme or click minimap button.")
         -- Sweep expired history entries on login
@@ -235,5 +239,3 @@ eventFrame:SetScript("OnEvent", function(self, event)
     end
 end)
 
--- Expose namespace for other files
-_G.PickMe_NS = PickMe

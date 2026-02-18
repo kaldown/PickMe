@@ -205,17 +205,6 @@ local function ScanLFGResults()
                     scanResults.singles[#scanResults.singles + 1] = listing
                 end
 
-                -- Auto-send: still enqueue if enabled (hidden feature)
-                if PickMe:IsActive() then
-                    local targetMode = PickMeDB.profile.targetMode or "groups"
-                    local shouldEnqueue = true
-                    if targetMode == "groups" and numMembers <= 1 then
-                        shouldEnqueue = false
-                    end
-                    if shouldEnqueue then
-                        PickMe:Enqueue(leader, dungeon)
-                    end
-                end
             end
         end
     end

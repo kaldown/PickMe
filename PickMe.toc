@@ -1,8 +1,8 @@
 ## Interface: 11508, 20505
 ## Title: PickMe
-## Notes: Auto-whisper LFG listings - get picked for dungeon groups faster
+## Notes: LFG listing browser with class and role filters
 ## Author: kaldown
-## Version: @project-version@
+## Version: 0.1.0
 ## IconTexture: Interface\Icons\INV_Letter_15
 ## SavedVariables: PickMeDB
 ## X-License: MIT

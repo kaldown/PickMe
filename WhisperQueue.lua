@@ -159,6 +159,7 @@ function PickMe:GetThrottleRemaining()
     return delay - elapsed
 end
 
+--[[ QUEUE DISABLED
 function PickMe:GetQueueCount()
     return #whisperQueue
 end
@@ -246,6 +247,7 @@ function PickMe:RemoveFromQueue(index)
         queueTicker = nil
     end
 end
+--]]
 
 function PickMe:GetHistoryCount()
     if not PickMeDB or not PickMeDB.history then return 0 end
