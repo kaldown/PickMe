@@ -19,7 +19,9 @@ local DEFAULTS = {
             filters = {
                 minLevel = 0,
                 roles = {},
-                excludeClasses = {},
+                classFilterMode = "off",     -- "off", "exclude", "include"
+                classFilterStrict = false,   -- strict include: only checked classes
+                classes = {},                 -- class tokens for include/exclude
                 sortBy = "none",   -- "none", "name", "level"
                 sortDir = "asc",   -- "asc", "desc"
             },
@@ -29,7 +31,9 @@ local DEFAULTS = {
             filters = {
                 minLevel = 0,
                 roles = {},
-                excludeClasses = {},
+                classFilterMode = "off",
+                classFilterStrict = false,
+                classes = {},
                 sortBy = "none",
                 sortDir = "asc",
             },
@@ -115,6 +119,22 @@ local function InitializeDB()
             end
         end
         PickMeDB.whispered = nil
+    end
+
+    -- Migration: excludeClasses -> classes + classFilterMode
+    for _, mode in ipairs({"groups", "singles"}) do
+        local f = PickMeDB.modes and PickMeDB.modes[mode] and PickMeDB.modes[mode].filters
+        if f and f.excludeClasses and not f.classFilterMode then
+            if #f.excludeClasses > 0 then
+                f.classFilterMode = "exclude"
+                f.classes = f.excludeClasses
+            else
+                f.classFilterMode = "off"
+                f.classes = {}
+            end
+            f.excludeClasses = nil
+            f.classFilterStrict = false
+        end
     end
 
     DeepMergeDefaults(PickMeDB, DEFAULTS)

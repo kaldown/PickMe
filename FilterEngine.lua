@@ -109,13 +109,61 @@ local function PassesFilter(listing, filters, mode)
         -- If seekingRoles is nil/empty, we have no data - show the listing
     end
 
-    -- Exclude classes filter (singles mode only - no member class data for groups)
-    if mode == "singles" and filters.excludeClasses and #filters.excludeClasses > 0 then
-        local leaderClass = listing.leaderClass
-        if leaderClass then
-            for _, excClass in ipairs(filters.excludeClasses) do
-                if leaderClass == excClass then
-                    return false
+    -- Class filter
+    if filters.classFilterMode and filters.classFilterMode ~= "off"
+       and filters.classes and #filters.classes > 0 then
+
+        local classes = filters.classes
+        local filterMode = filters.classFilterMode
+        local strict = filters.classFilterStrict or false
+
+        if mode == "singles" then
+            -- Singles: check leader class only
+            local leaderClass = listing.leaderClass
+            if leaderClass then
+                if filterMode == "exclude" then
+                    for _, c in ipairs(classes) do
+                        if leaderClass == c then return false end
+                    end
+                elseif filterMode == "include" then
+                    local found = false
+                    for _, c in ipairs(classes) do
+                        if leaderClass == c then found = true; break end
+                    end
+                    if not found then return false end
+                end
+            end
+        elseif mode == "groups" and listing.members and #listing.members > 0 then
+            if filterMode == "exclude" then
+                -- Exclude: filter if ANY member has an excluded class
+                for _, m in ipairs(listing.members) do
+                    if m.class then
+                        for _, c in ipairs(classes) do
+                            if m.class == c then return false end
+                        end
+                    end
+                end
+            elseif filterMode == "include" then
+                if strict then
+                    -- Strict include: ALL members must be one of the checked classes
+                    for _, m in ipairs(listing.members) do
+                        if m.class then
+                            local allowed = false
+                            for _, c in ipairs(classes) do
+                                if m.class == c then allowed = true; break end
+                            end
+                            if not allowed then return false end
+                        end
+                    end
+                else
+                    -- Normal include: must have at least one of EACH checked class
+                    for _, c in ipairs(classes) do
+                        local found = false
+                        for _, m in ipairs(listing.members) do
+                            if m.class == c then found = true; break end
+                        end
+                        if not found then return false end
+                    end
                 end
             end
         end

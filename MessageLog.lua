@@ -5,7 +5,7 @@ local _, PickMe = ...
 --------------------------------------------------------------
 
 local FRAME_WIDTH = 500
-local FRAME_HEIGHT = 480
+local FRAME_HEIGHT = 500
 local FOOTER_HEIGHT = 24
 local ROW_HEIGHT = 26
 local VISIBLE_ROWS = 9
@@ -347,15 +347,40 @@ sortDirBtn:SetScript("OnClick", function()
     PlaySound(808)
 end)
 
--- Class filter checkboxes (2 rows: 5+4)
+-- Class filter mode toggle (Off / Exclude / Include)
 local classY = sortY - 22
-local classCheckboxes = {}
-local classRow2Y = classY - 20
 
-local classLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-classLabel:SetPoint("TOPLEFT", 16, classY)
-classLabel:SetText("Exclude:")
-classLabel:SetTextColor(0.6, 0.6, 0.6)
+local classOffBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+classOffBtn:SetSize(30, 18)
+classOffBtn:SetPoint("TOPLEFT", 16, classY + 2)
+classOffBtn:SetText("Off")
+
+local classExclBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+classExclBtn:SetSize(56, 18)
+classExclBtn:SetPoint("LEFT", classOffBtn, "RIGHT", 2, 0)
+classExclBtn:SetText("Exclude")
+
+local classInclBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+classInclBtn:SetSize(56, 18)
+classInclBtn:SetPoint("LEFT", classExclBtn, "RIGHT", 2, 0)
+classInclBtn:SetText("Include")
+
+-- Strict checkbox (only visible in include mode)
+local strictCb = CreateFrame("CheckButton", "PickMeStrictCb", frame, "UICheckButtonTemplate")
+strictCb:SetSize(18, 18)
+strictCb:SetPoint("LEFT", classInclBtn, "RIGHT", 4, 0)
+
+local strictLabel = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+strictLabel:SetPoint("LEFT", strictCb, "RIGHT", -2, 0)
+strictLabel:SetText("Strict")
+strictLabel:SetTextColor(0.6, 0.6, 0.6)
+strictCb:Hide()
+strictLabel:Hide()
+
+-- Class checkboxes (2 rows: 5+4)
+local classCheckboxes = {}
+local classCbY = classY - 20
+local classCbRow2Y = classCbY - 20
 
 -- Class data from FilterEngine (avoid duplication)
 local CLASS_SHORT = {
@@ -364,7 +389,7 @@ local CLASS_SHORT = {
     MAGE = "Mag", WARLOCK = "Wlk", DRUID = "Dru",
 }
 
-local classXOffset = 70
+local classXOffset = 16
 local classSpacing = 82
 
 local fe = GetFilterEngine()
@@ -375,7 +400,7 @@ for i, class in ipairs(fe.CLASS_LIST) do
     -- 2 rows: first 5, then 4
     local row = (i <= 5) and 0 or 1
     local col = (i <= 5) and (i - 1) or (i - 6)
-    local y = row == 0 and classY or classRow2Y
+    local y = row == 0 and classCbY or classCbRow2Y
     cb:SetPoint("TOPLEFT", classXOffset + col * classSpacing, y + 2)
 
     local label = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -387,50 +412,79 @@ for i, class in ipairs(fe.CLASS_LIST) do
 
     cb:SetScript("OnClick", function(self)
         local filters = PickMeDB.modes[activeMode].filters
-        filters.excludeClasses = filters.excludeClasses or {}
+        filters.classes = filters.classes or {}
         if self:GetChecked() then
             local found = false
-            for _, c in ipairs(filters.excludeClasses) do
+            for _, c in ipairs(filters.classes) do
                 if c == class then found = true; break end
             end
             if not found then
-                filters.excludeClasses[#filters.excludeClasses + 1] = class
+                filters.classes[#filters.classes + 1] = class
             end
         else
-            for j = #filters.excludeClasses, 1, -1 do
-                if filters.excludeClasses[j] == class then
-                    table.remove(filters.excludeClasses, j)
+            for j = #filters.classes, 1, -1 do
+                if filters.classes[j] == class then
+                    table.remove(filters.classes, j)
                 end
             end
         end
+        isDirty = true
     end)
 
     classCheckboxes[class] = { cb = cb, label = label }
 end
 
--- Track class filter UI elements for show/hide based on mode
-local classFilterElements = { classLabel }
-for _, pair in pairs(classCheckboxes) do
-    classFilterElements[#classFilterElements + 1] = pair.cb
-    classFilterElements[#classFilterElements + 1] = pair.label
-end
+local function UpdateClassModeButtons()
+    local filters = PickMeDB.modes[activeMode].filters
+    local mode = filters.classFilterMode or "off"
 
-local function UpdateClassFilterVisibility()
-    -- Class exclude only applies to Singles mode
-    for _, el in ipairs(classFilterElements) do
-        if activeMode == "singles" then
-            el:Show()
+    classOffBtn:SetNormalFontObject(mode == "off" and "GameFontHighlight" or "GameFontNormalSmall")
+    classExclBtn:SetNormalFontObject(mode == "exclude" and "GameFontHighlight" or "GameFontNormalSmall")
+    classInclBtn:SetNormalFontObject(mode == "include" and "GameFontHighlight" or "GameFontNormalSmall")
+
+    if mode == "include" then
+        strictCb:Show()
+        strictLabel:Show()
+        strictCb:SetChecked(filters.classFilterStrict or false)
+    else
+        strictCb:Hide()
+        strictLabel:Hide()
+    end
+
+    -- Show/hide class checkboxes based on mode
+    local showClasses = (mode ~= "off")
+    for _, pair in pairs(classCheckboxes) do
+        if showClasses then
+            pair.cb:Show()
+            pair.label:Show()
         else
-            el:Hide()
+            pair.cb:Hide()
+            pair.label:Hide()
         end
     end
 end
+
+local function SetClassFilterMode(filterMode)
+    local filters = PickMeDB.modes[activeMode].filters
+    filters.classFilterMode = filterMode
+    UpdateClassModeButtons()
+    isDirty = true
+end
+
+classOffBtn:SetScript("OnClick", function() SetClassFilterMode("off"); PlaySound(808) end)
+classExclBtn:SetScript("OnClick", function() SetClassFilterMode("exclude"); PlaySound(808) end)
+classInclBtn:SetScript("OnClick", function() SetClassFilterMode("include"); PlaySound(808) end)
+strictCb:SetScript("OnClick", function(self)
+    local filters = PickMeDB.modes[activeMode].filters
+    filters.classFilterStrict = self:GetChecked()
+    isDirty = true
+end)
 
 --------------------------------------------------------------
 -- Divider line between config and listings
 --------------------------------------------------------------
 
-local dividerY = classRow2Y - 22
+local dividerY = classCbRow2Y - 22
 local divider = frame:CreateTexture(nil, "OVERLAY")
 divider:SetPoint("TOPLEFT", 12, dividerY)
 divider:SetPoint("TOPRIGHT", -12, dividerY)
@@ -1017,23 +1071,24 @@ local function LoadModeConfig()
         roleCheckboxes[role]:SetChecked(isActive)
     end
 
-    local exclClasses = modeConfig.filters.excludeClasses or {}
+    -- Class filter checkboxes
     local fe2 = GetFilterEngine()
+    local selectedClasses = modeConfig.filters.classes or {}
     for _, class in ipairs(fe2.CLASS_LIST) do
-        local isExcl = false
-        for _, c in ipairs(exclClasses) do
-            if c == class then isExcl = true; break end
+        local isSelected = false
+        for _, c in ipairs(selectedClasses) do
+            if c == class then isSelected = true; break end
         end
-        classCheckboxes[class].cb:SetChecked(isExcl)
+        classCheckboxes[class].cb:SetChecked(isSelected)
     end
 
+    UpdateClassModeButtons()
     UpdateSortButtons()
 end
 
 local function SwitchMode(mode)
     activeMode = mode
     UpdateModeBtns()
-    UpdateClassFilterVisibility()
     LoadModeConfig()
     UpdateListings()
     UpdateFooter()
@@ -1051,7 +1106,6 @@ frame:SetScript("OnShow", function()
     delayBox:SetText(tostring(PickMeDB.settings.whisperDelay or 3))
     LoadModeConfig()
     UpdateModeBtns()
-    UpdateClassFilterVisibility()
     isDirty = true
 end)
 
