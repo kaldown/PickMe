@@ -12,7 +12,7 @@ Other addons:
 - [LazyProf](https://www.curseforge.com/wow/addons/lazyprof) - Profession leveling optimizer
 - [CraftLib](https://www.curseforge.com/wow/addons/craftlib) - Recipe database
 - [Silencer](https://www.curseforge.com/wow/addons/silencer-whispers) - Whisper gatekeeper
-- [VendorSniper](https://www.curseforge.com/wow/addons/vendorsniper) - Vendor restock sniper
+- [VendorSniper](https://addons.wago.io/addons/vendorsniper) - Vendor restock sniper
 - [EyesOnMe](https://www.curseforge.com/wow/addons/eyesonme) - PvP targeting awareness
 
 LFG listing browser for World of Warcraft Classic. Browse groups and solo players from the LFG tool, filter by class, role, and level, then send templated whispers with one click.
