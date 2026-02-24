@@ -24,6 +24,7 @@ local MAX_ROLE_ICONS = 5
 local FE = nil
 local activeMode = "groups"
 local isDirty = false
+local wasShownBeforeCombat = false
 
 --------------------------------------------------------------
 -- Helpers
@@ -79,7 +80,10 @@ title:SetText("|cFF00CC66PickMe|r")
 -- Close button
 local closeBtn = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 closeBtn:SetPoint("TOPRIGHT", -4, -4)
-closeBtn:SetScript("OnClick", function() frame:Hide() end)
+closeBtn:SetScript("OnClick", function()
+    if InCombatLockdown() then return end
+    frame:Hide()
+end)
 
 --------------------------------------------------------------
 -- Mode toggle (Groups / Singles)
@@ -1124,11 +1128,13 @@ local function HookLFGFrame()
         local lfgFrame = _G[name]
         if lfgFrame and lfgFrame.HookScript then
             lfgFrame:HookScript("OnShow", function()
+                if InCombatLockdown() then return end
                 if not frame:IsShown() then
                     frame:Show()
                 end
             end)
             lfgFrame:HookScript("OnHide", function()
+                if InCombatLockdown() then return end
                 if frame:IsShown() then
                     frame:Hide()
                 end
@@ -1168,6 +1174,7 @@ end
 --------------------------------------------------------------
 
 function PickMe:ToggleMainFrame()
+    if InCombatLockdown() then return end
     if frame:IsShown() then
         frame:Hide()
     else
@@ -1176,5 +1183,26 @@ function PickMe:ToggleMainFrame()
 end
 
 PickMe.ToggleMessageFrame = PickMe.ToggleMainFrame
-PickMe.ShowMessageFrame = function(self) frame:Show() end
+PickMe.ShowMessageFrame = function(self)
+    if InCombatLockdown() then return end
+    frame:Show()
+end
 PickMe.ToggleFrame = PickMe.ToggleMainFrame
+
+--------------------------------------------------------------
+-- Combat lockdown handling
+--------------------------------------------------------------
+
+function PickMe:OnCombatLockdown()
+    if frame:IsShown() then
+        wasShownBeforeCombat = true
+        frame:Hide()
+    end
+end
+
+function PickMe:OnCombatUnlock()
+    if wasShownBeforeCombat then
+        wasShownBeforeCombat = false
+        frame:Show()
+    end
+end

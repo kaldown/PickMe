@@ -239,6 +239,8 @@ end
 
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
+eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
 eventFrame:SetScript("OnEvent", function(self, event)
     if event == "PLAYER_LOGIN" then
         InitializeDB()
@@ -260,6 +262,14 @@ eventFrame:SetScript("OnEvent", function(self, event)
                 PickMe:SweepExpiredHistory()
             end
         end)
+    elseif event == "PLAYER_REGEN_DISABLED" then
+        if PickMe.OnCombatLockdown then
+            PickMe:OnCombatLockdown()
+        end
+    elseif event == "PLAYER_REGEN_ENABLED" then
+        if PickMe.OnCombatUnlock then
+            PickMe:OnCombatUnlock()
+        end
     end
 end)
 
